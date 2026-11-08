@@ -9,7 +9,7 @@ const empty: State = { records: [], aliases: {}, dismissed: [] };
 async function fetchAll<T>(table: "transactions", select: string): Promise<T[]> {
   const out: T[] = [];
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await supabase.from(table).select(select).order("created_at").range(from, from + 999);
+    const { data, error } = await supabase.from(table).select(select).order("created_at").order("client_id").range(from, from + 999);
     if (error) throw error;
     out.push(...((data ?? []) as T[]));
     if (!data || data.length < 1000) return out;
