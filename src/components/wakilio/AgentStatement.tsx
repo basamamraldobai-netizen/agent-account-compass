@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, ArrowRight, ChevronLeft, Printer, Search, Wallet, type LucideIcon } from "lucide-react";
-import { useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { AgentSummary, PassportAccount } from "@/lib/wakilio/engine";
 
@@ -89,6 +89,12 @@ export function AgentStatement({ agent, onBack, onUnmerge }: { agent: AgentSumma
           </Button>
         ))}
       </div>
+      {receiptFilter && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[11px] border border-chart-3/50 bg-chart-3/10 px-4 py-2.5 text-sm print:hidden">
+          <span>تصفية السند المشترك رقم <span className="num font-bold">{receiptFilter}</span>{filterInfo && <> — <span className="num">{filterInfo.count}</span> جوازات، إجمالي <span className="num">{fmt(filterInfo.total)}</span></>}</span>
+          <Button size="sm" variant="outline" onClick={() => setReceiptFilter(null)} className="rounded-full">إلغاء التصفية وعرض الكل ×</Button>
+        </div>
+      )}
       <div className="table-wrap">
         <table className="wakilio-table statement-table">
           <colgroup>
@@ -108,14 +114,27 @@ export function AgentStatement({ agent, onBack, onUnmerge }: { agent: AgentSumma
               const shared = [...new Set(acc.records.filter((r) => r.sharedReceipt).map((r) => r.receipt || "—"))];
               const isShared = shared.length > 0;
               const linked = hoverReceipt !== null && shared.includes(hoverReceipt);
+              const groupKey = shared[0];
+              const prevKey = i > 0 ? sharedOf(rows[i - 1]!)[0] : undefined;
+              const info = groupKey && groupKey !== prevKey ? receiptInfo(groupKey) : null;
               return (
-                <tr key={acc.key} onClick={() => setOpen(acc)} onMouseEnter={() => setHoverReceipt(shared[0] ?? null)} onMouseLeave={() => setHoverReceipt(null)} className={`group cursor-pointer border-t border-border transition-colors ${isShared ? "border-r-4 border-r-chart-3 bg-chart-3/10 hover:bg-chart-3/20" : "hover:bg-secondary/60"} ${linked ? "!bg-chart-3/25" : ""}`}>
+                <Fragment key={acc.key}>
+                {info && groupKey && (
+                  <tr className="border-t-2 border-chart-3/60 bg-chart-3/15 text-xs">
+                    <td colSpan={7} className="border-r-4 border-r-chart-3 px-3 py-1.5">
+                      <span className="font-bold">سند مشترك <span className="num">{groupKey}</span></span>
+                      <span className="mx-2 text-muted-foreground">|</span>الإجمالي: <span className="num font-semibold">{fmt(info.total)}</span>
+                      <span className="mx-2 text-muted-foreground">|</span>موزع على <span className="num">{info.count}</span> جوازات (حصة كل جواز: <span className="num">{fmt(Math.round((info.total / info.count) * 100) / 100)}</span>)
+                    </td>
+                  </tr>
+                )}
+                <tr onClick={() => setOpen(acc)} onMouseEnter={() => setHoverReceipt(shared[0] ?? null)} onMouseLeave={() => setHoverReceipt(null)} className={`group cursor-pointer border-t border-border transition-colors ${isShared ? "border-r-4 border-r-chart-3 bg-chart-3/10 hover:bg-chart-3/20" : "hover:bg-secondary/60"} ${linked ? "!bg-chart-3/30 outline outline-1 outline-chart-3/60" : ""}`}>
                   <td className="num p-3 text-muted-foreground">{i + 1}</td>
                   <td className="p-3 font-medium">
                     <div className="flex w-max max-w-full flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="min-w-0 break-words group-hover:text-primary">{acc.name}</span>
                       <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset print:hidden ${multi ? "bg-accent/15 text-accent ring-accent/30" : "bg-warning/12 text-warning ring-warning/30"}`}>{multi ? `${acc.records.length} دفعات` : "دفعة واحدة"}</span>
-                      {shared.map((rc) => <span key={rc} className="shrink-0 whitespace-nowrap rounded-full bg-chart-3/20 px-2 py-0.5 text-[10px] font-semibold text-foreground ring-1 ring-inset ring-chart-3/50">سند مشترك <span className="num">{rc}</span></span>)}
+                      {shared.map((rc) => <button type="button" key={rc} title="عرض شركاء هذا السند فقط" onMouseEnter={() => setHoverReceipt(rc)} onClick={(e) => { e.stopPropagation(); setReceiptFilter(receiptFilter === rc ? null : rc); }} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-semibold text-foreground ring-1 ring-inset ring-chart-3/50 hover:bg-chart-3/40 ${receiptFilter === rc ? "bg-chart-3/50" : "bg-chart-3/20"}`}>سند مشترك #<span className="num">{rc}</span></button>)}
                       {acc.remaining < 0 && <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary ring-1 ring-inset ring-primary/30 print:hidden">فائض: <span className="num">{fmt(-acc.remaining)}</span></span>}
                     </div>
                   </td>
@@ -125,6 +144,7 @@ export function AgentStatement({ agent, onBack, onUnmerge }: { agent: AgentSumma
                   <td className="p-3 text-muted-foreground">{[last?.status, last?.destination].filter(Boolean).join(" · ")}</td>
                   <td className="p-3 print:hidden"><Button size="icon" variant="ghost" aria-label={`تفاصيل ${acc.name}`} title="التفاصيل" onClick={(e) => { e.stopPropagation(); setOpen(acc); }} className="h-8 w-8 text-muted-foreground group-hover:text-primary"><ChevronLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" /></Button></td>
                 </tr>
+                </Fragment>
               );
             })}
           </tbody>
