@@ -1,0 +1,199 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design system definition.
+ *
+ * The @theme inline block maps CSS custom properties to Tailwind utility
+ * classes (e.g. --color-primary -> bg-primary, text-primary).
+ *
+ * The :root and .dark blocks define the actual color values using oklch.
+ * All colors MUST use oklch format.
+ *
+ * To add a new semantic color:
+ * 1. Add the variable to :root (light value) and .dark (dark value)
+ * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-warning: var(--warning);
+  --font-display: Alexandria, "IBM Plex Sans Arabic", sans-serif;
+  --font-sans: "IBM Plex Sans Arabic", sans-serif;
+  --font-num: Inter, sans-serif;
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+:root {
+   --radius: 0.6875rem;
+   --background: oklch(0.203 0.034 257);
+   --foreground: oklch(0.97 0.007 258);
+   --card: oklch(0.252 0.047 258);
+  --card-foreground: oklch(0.97 0.005 250);
+  --popover: oklch(0.21 0.025 255);
+  --popover-foreground: oklch(0.97 0.005 250);
+   --primary: oklch(0.742 0.132 169);
+   --primary-foreground: oklch(1 0 0);
+   --secondary: oklch(0.288 0.048 257);
+  --secondary-foreground: oklch(0.95 0.01 250);
+  --muted: oklch(0.25 0.03 255);
+   --muted-foreground: oklch(0.754 0.026 258);
+   --accent: oklch(0.72 0.082 247);
+  --accent-foreground: oklch(0.18 0.03 255);
+  --destructive: oklch(0.68 0.19 22);
+  --destructive-foreground: oklch(0.98 0 0);
+   --warning: oklch(0.79 0.087 86);
+   --border: oklch(0.354 0.05 255);
+   --input: oklch(0.354 0.05 255);
+  --ring: oklch(0.83 0.16 168);
+  --chart-1: oklch(0.83 0.16 168);
+  --chart-2: oklch(0.78 0.12 220);
+  --chart-3: oklch(0.7 0.15 295);
+  --chart-4: oklch(0.84 0.13 80);
+  --chart-5: oklch(0.68 0.19 22);
+   --sidebar: oklch(0.202 0.039 257);
+  --sidebar-foreground: oklch(0.97 0.005 250);
+  --sidebar-primary: oklch(0.83 0.16 168);
+  --sidebar-primary-foreground: oklch(0.2 0.05 165);
+  --sidebar-accent: oklch(0.25 0.03 255);
+  --sidebar-accent-foreground: oklch(0.97 0.005 250);
+  --sidebar-border: oklch(0.8 0.03 250 / 14%);
+  --sidebar-ring: oklch(0.83 0.16 168);
+   --gradient-primary: linear-gradient(110deg, var(--primary), oklch(0.684 0.123 169));
+   --glow: 0 7px 18px oklch(0.6 0.12 168 / 16%);
+   --surface-soft: oklch(0.231 0.039 256);
+   --sidebar-end: oklch(0.285 0.058 252);
+   --sidebar-label: oklch(0.709 0.046 248);
+   --sidebar-active: oklch(0.846 0.092 172);
+   --sidebar-gradient: linear-gradient(180deg, var(--sidebar), var(--sidebar-end));
+   --sidebar-selected: linear-gradient(100deg, oklch(0.54 0.096 172 / 28%), oklch(0.58 0.099 249 / 13%));
+   --panel-shadow: 0 18px 48px oklch(0 0 0 / 24%);
+   --overlay: oklch(0.12 0.02 257 / 70%);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+     margin: 0;
+    min-height: 100vh;
+  }
+  .num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+}
+
+.workspace { min-height: 100vh; }
+.workspace-topbar { height: 72px; position: sticky; top: 0; z-index: 40; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 24px; border-bottom: 1px solid var(--border); background: color-mix(in oklab, var(--card) 90%, transparent); backdrop-filter: blur(16px); }
+.workspace-topbar button { width: 40px; height: 40px; border-radius: 12px; background: var(--card); }
+.workspace-brand { display: flex; align-items: center; gap: 10px; line-height: 1.25; }
+.brand-mark { width: 38px; height: 38px; object-fit: cover; border-radius: 12px; border: 1px solid var(--border); }
+.workspace-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: calc(100vh - 72px); transition: grid-template-columns .25s ease; }
+.workspace-sidebar { position: sticky; top: 72px; height: calc(100vh - 72px); display: flex; flex-direction: column; min-width: 0; padding: 24px 16px; background: var(--sidebar-gradient); border-left: 1px solid var(--border); }
+.sidebar-caption { padding: 19px 13px 12px; color: var(--sidebar-label); font-size: 10px; font-weight: 700; }
+.sidebar-link { width: 100%; height: auto; min-height: 59px; justify-content: flex-start; padding: 13px 12px; gap: 13px; border: 1px solid transparent; border-radius: 13px; color: var(--sidebar-foreground); font-size: 13px; }
+.sidebar-link:hover { background: color-mix(in oklab, var(--primary) 10%, transparent); color: var(--sidebar-active); }
+.sidebar-link.is-active { background: var(--sidebar-selected); color: var(--sidebar-active); border-color: color-mix(in oklab, var(--primary) 15%, transparent); box-shadow: inset -3px 0 var(--primary); font-weight: 700; }
+.nav-icon { display: grid; place-items: center; width: 31px; height: 31px; flex: 0 0 31px; border-radius: 8px; background: color-mix(in oklab, var(--sidebar-foreground) 8%, transparent); color: var(--accent); }
+.sidebar-link.is-active .nav-icon { color: var(--sidebar-active); background: color-mix(in oklab, var(--primary) 17%, transparent); }
+.sidebar-footer { display: flex; align-items: center; gap: 10px; margin-top: auto; padding: 20px 10px 0; border-top: 1px solid var(--border); color: var(--sidebar-label); line-height: 1.8; }
+.sidebar-collapsed .workspace-layout { grid-template-columns: 78px minmax(0, 1fr); }
+.sidebar-collapsed .workspace-sidebar { padding-inline: 10px; }
+.sidebar-collapsed .sidebar-caption, .sidebar-collapsed .nav-label { display: none; }
+.sidebar-collapsed .sidebar-link { justify-content: center; padding: 11px 8px; }
+.workspace-main { min-width: 0; width: 100%; max-width: 1600px; margin-inline: auto; padding: 32px 38px 55px; }
+.page-heading { display: flex; align-items: center; justify-content: space-between; gap: 15px; flex-wrap: wrap; margin-bottom: 25px; }
+.page-heading h1 { font-family: var(--font-display); font-size: 29px; line-height: 1.5; font-weight: 700; }
+.page-kicker { color: var(--muted-foreground); font-size: 12px; margin-top: 6px; }
+.wakilio-primary { background-image: var(--gradient-primary); box-shadow: var(--glow); border-radius: 11px; }
+.wakilio-primary:hover { filter: brightness(1.08); }
+.stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 19px; padding: 20px; min-height: 142px; box-shadow: var(--panel-shadow); min-width: 0; }
+.stat-card .num { overflow-wrap: anywhere; }
+.stat-icon { display: grid; place-items: center; flex-shrink: 0; width: 39px; height: 39px; border-radius: 13px; background: color-mix(in oklab, var(--primary) 12%, var(--card)); }
+.section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 17px; }
+.section-heading h2 { font-family: var(--font-display); font-size: 15px; font-weight: 700; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--card); }
+.wakilio-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.wakilio-table th, .wakilio-table td { padding: 15px 16px; text-align: right; border-bottom: 1px solid var(--border); }
+.wakilio-table th { font-weight: 700; color: var(--muted-foreground); background: var(--secondary); white-space: nowrap; }
+.wakilio-table tbody tr:last-child td { border-bottom: 0; }
+.wakilio-table tbody tr:hover { background: color-mix(in oklab, var(--secondary) 50%, transparent); }
+.statement-table { min-width: 700px; table-layout: fixed; }
+.mapping-table { min-width: 620px; }
+.mapping-table td { max-width: 250px; }
+.file-name { overflow-wrap: anywhere; }
+.empty-state { padding: 45px 20px; display: flex; flex-direction: column; align-items: center; gap: 12px; color: var(--muted-foreground); text-align: center; font-size: 13px; }
+.empty-state > svg { width: 30px; height: 30px; color: var(--primary); }
+.summary-panel { border: 1px solid var(--border); border-radius: 19px; background: var(--card); padding: 20px; box-shadow: var(--panel-shadow); }
+.quick-actions { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+.quick-actions a { white-space: normal; justify-content: flex-start; text-align: right; height: auto; min-height: 74px; padding: 16px; border-radius: 14px; background: var(--surface-soft); gap: 12px; }
+.finance-track { display: flex; height: 16px; overflow: hidden; border-radius: 8px; background: var(--secondary); }
+.finance-track progress { width: 100%; appearance: none; height: 16px; border: 0; }
+.finance-track progress::-webkit-progress-bar { background: var(--destructive); }
+.finance-track progress::-webkit-progress-value { background: var(--primary); }
+.finance-track progress::-moz-progress-bar { background: var(--primary); }
+.suggestions-panel { padding: 0; }
+.import-mapping input, .import-mapping select { max-width: 100%; }
+@media (max-width: 1100px) { .workspace-main { padding: 30px 22px 45px; } }
+@media (max-width: 767px) {
+ .workspace-topbar { padding: 0 14px; }
+ .workspace-layout, .sidebar-collapsed .workspace-layout { grid-template-columns: minmax(0,1fr); }
+ .workspace-sidebar, .sidebar-collapsed .workspace-sidebar { position: fixed; z-index: 50; right: 0; top: 72px; bottom: 0; width: 260px; height: auto; padding: 24px 16px; transform: translateX(105%); transition: transform .25s ease; }
+ .workspace-sidebar.is-open { transform: translateX(0); }
+ .sidebar-collapsed .sidebar-caption, .sidebar-collapsed .nav-label { display: block; }
+ .sidebar-collapsed .sidebar-link { justify-content: flex-start; padding: 13px 12px; }
+ .sidebar-backdrop { position: fixed; inset: 72px 0 0; background: var(--overlay); z-index: 45; }
+ .workspace-main { padding: 24px 14px 40px; }
+ .page-heading h1 { font-size: 23px; }
+ .stat-card { padding: 15px; min-height: 130px; }
+ .stat-card .num { font-size: 22px; }
+ .stat-icon { width: 31px; height: 31px; border-radius: 10px; }
+ .quick-actions { grid-template-columns: 1fr; }
+ .wakilio-table th, .wakilio-table td { padding: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+@media print { .workspace-topbar, .workspace-sidebar, .sidebar-backdrop, .workspace-main button { display: none !important; } .workspace-layout { display: block !important; } .workspace-main { padding: 0; } .table-wrap { overflow: visible; } .statement-table { min-width: 0; font-size: 9px; } .statement-table th, .statement-table td { padding: 5px; } }
