@@ -47,6 +47,12 @@ export function AgentStatement({ agent, onBack, onUnmerge }: { agent: AgentSumma
     return r ? { total: r.originalPaid, count: r.participants.length, names: r.participants } : null;
   };
   const filterInfo = receiptFilter ? receiptInfo(receiptFilter) : null;
+  useEffect(() => {
+    if (!receiptFilter) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setReceiptFilter(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [receiptFilter]);
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
