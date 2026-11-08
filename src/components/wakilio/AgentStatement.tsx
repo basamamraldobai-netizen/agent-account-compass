@@ -32,7 +32,21 @@ export function AgentStatement({ agent, onBack, onUnmerge }: { agent: AgentSumma
   const term = q.trim().toLowerCase();
   const matches = (a: PassportAccount) => !term || a.name.toLowerCase().includes(term) || a.records.some((r) => [r.passport, r.receipt, r.profession, r.notes, r.status, r.destination].some((v) => String(v ?? "").toLowerCase().includes(term)));
   const activeFilter = FILTERS.find((f) => f.id === filter) ?? FILTERS[0];
-  const rows = agent.accounts.filter((account) => activeFilter?.test(account) ?? true).filter(matches);
+  const [receiptFilter, setReceiptFilter] = useState<string | null>(null);
+  const sharedOf = (a: PassportAccount) => [...new Set(a.records.filter((r) => r.sharedReceipt).map((r) => r.receipt || "—"))];
+  const filtered = agent.accounts
+    .filter((account) => receiptFilter ? sharedOf(account).includes(receiptFilter) : (activeFilter?.test(account) ?? true))
+    .filter(matches);
+  // Cluster partners of one shared receipt as adjacent rows, ordered by receipt number; singles keep their order after.
+  const num = (s: string) => { const n = Number(s.replace(/\D/g, "")); return Number.isFinite(n) && s !== "—" ? n : Infinity; };
+  const rows = filtered.map((a, idx) => ({ a, idx, key: sharedOf(a)[0] }))
+    .sort((x, y) => (x.key ? 0 : 1) - (y.key ? 0 : 1) || (x.key && y.key ? num(x.key) - num(y.key) || x.key.localeCompare(y.key) : 0) || x.idx - y.idx)
+    .map(({ a }) => a);
+  const receiptInfo = (rc: string) => {
+    const r = agent.accounts.flatMap((a) => a.records).find((x) => x.sharedReceipt && (x.receipt || "—") === rc)?.sharedReceipt;
+    return r ? { total: r.originalPaid, count: r.participants.length, names: r.participants } : null;
+  };
+  const filterInfo = receiptFilter ? receiptInfo(receiptFilter) : null;
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
