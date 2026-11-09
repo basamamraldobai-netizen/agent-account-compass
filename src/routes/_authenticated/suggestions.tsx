@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { toast } from "sonner";
-import { summarize } from "@/lib/wakilio/engine";
+import { mergeAgents, summarize } from "@/lib/wakilio/engine";
 import { useWakilio } from "@/components/wakilio/WakilioContext";
 import { MergeSuggestions } from "@/components/wakilio/MergeSuggestions";
 export const Route = createFileRoute("/_authenticated/suggestions")({
@@ -14,8 +14,21 @@ export const Route = createFileRoute("/_authenticated/suggestions")({
 function Suggestions() {
   const [state, setState] = useWakilio();
   const agents = useMemo(() => summarize(state.records, state.aliases), [state.records, state.aliases]);
-  return <><header className="page-heading"><div><h1>صندوق الاقتراحات</h1><div className="page-kicker">الوكلاء / مطابقة الأسماء</div></div></header><MergeSuggestions agents={agents} dismissed={state.dismissed} onMerge={(from, into) => {
-    setState((s) => ({ ...s, aliases: { ...Object.fromEntries(Object.entries(s.aliases).map(([k, v]) => [k, v === from ? into : v])), [from]: into } }));
-    toast.success(`تم دمج «${from}» في «${into}»`);
-  }} onDismiss={(k) => setState((s) => ({ ...s, dismissed: [...s.dismissed, k] }))} /></>;
+  return <><header className="page-heading"><div><h1>صندوق الاقتراحات</h1><div className="page-kicker">الوكلاء / مطابقة الأسماء</div></div></header><MergeSuggestions
+    agents={agents}
+    dismissed={state.dismissed}
+    onMerge={(from, into) => {
+      setState((s) => ({ ...s, aliases: mergeAgents(s.aliases, from, into) }));
+      toast.success(`تم دمج ${from.length - 1} أسماء في «${into}»`);
+    }}
+    onMergeMany={(groups) => {
+      setState((s) => ({ ...s, aliases: groups.reduce((acc, g) => mergeAgents(acc, g.from, g.into), s.aliases) }));
+      toast.success(`تم دمج ${groups.length} مجموعات إملائية`);
+    }}
+    onDismiss={(keys) => setState((s) => ({ ...s, dismissed: [...new Set([...s.dismissed, ...keys])] }))}
+    onUnmerge={(alias) => {
+      setState((s) => { const aliases = { ...s.aliases }; delete aliases[alias]; return { ...s, aliases }; });
+      toast.success(`تم فك دمج «${alias}»`);
+    }}
+  /></>;
 }
