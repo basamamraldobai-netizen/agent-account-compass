@@ -127,7 +127,8 @@ function ClusterCard({ cluster, byName, onMerge, onDismiss }: {
     setPicked((p) => (on ? [...p, n] : p.filter((x) => x !== n)));
     if (!on && n === main) setMain(ordered.find((x) => x !== n && picked.includes(x)) ?? main);
   };
-  const canMerge = chosen.length >= 2 && chosen.includes(main);
+  const canMerge = chosen.length >= 2;
+  const suggested = chosen.includes(main) ? main : (chosen[0] ?? main);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -157,7 +158,6 @@ function ClusterCard({ cluster, byName, onMerge, onDismiss }: {
             {ordered.map((n) => {
               const a = byName.get(n);
               const on = picked.includes(n);
-              const isMain = n === main && on;
               return (
                 <tr key={n} className={`border-b border-border/60 transition-colors last:border-0 ${on ? "" : "opacity-45"}`}>
                   <td className="p-2"><Checkbox checked={on} onCheckedChange={(v) => toggle(n, v === true)} aria-label={`تضمين ${n}`} /></td>
@@ -188,7 +188,7 @@ function ClusterCard({ cluster, byName, onMerge, onDismiss }: {
       <MergeConfirmDialog
         open={confirming}
         names={chosen}
-        suggested={main}
+        suggested={suggested}
         totals={total}
         byName={byName}
         onClose={() => setConfirming(false)}
