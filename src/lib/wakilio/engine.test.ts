@@ -196,4 +196,11 @@ describe("agent clusters, merge and rename", () => {
     const renamed = renameAgent(aliases, "أبو خالد", "خالد");
     expect(resolveAgent("أبو خالد", renamed)).toBe("خالد عباس");
   });
+  it("merges selected names into a hand-typed unified name, and each can be unmerged", () => {
+    const aliases = mergeAgents({}, ["زوايا", "مكتب زوايه", "م/زوايا"], "مكتب زوايا للسفريات");
+    for (const n of ["زوايا", "مكتب زوايه", "م/زوايا"]) expect(resolveAgent(n, aliases)).toBe("مكتب زوايا للسفريات");
+    const { ["زوايا"]: _removed, ...unmerged } = aliases;
+    expect(resolveAgent("زوايا", unmerged)).toBe("زوايا");
+    expect(resolveAgent("م/زوايا", unmerged)).toBe("مكتب زوايا للسفريات");
+  });
 });
