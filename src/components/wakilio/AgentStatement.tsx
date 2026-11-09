@@ -3,6 +3,7 @@ import { AlertTriangle, ArrowRight, ChevronLeft, Printer, Search, Wallet, type L
 import { Fragment, useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { AgentSummary, PassportAccount } from "@/lib/wakilio/engine";
+import { RenameAgent } from "./RenameAgent";
 
 export const fmt = (n: number) => n.toLocaleString("en-US");
 
@@ -24,7 +25,7 @@ const FILTERS: { id: FilterId; label: string; test: (a: PassportAccount) => bool
   { id: "owing", label: "متبقي عليه", test: (a) => a.remaining > 0 },
 ];
 
-export function AgentStatement({ agent, onBack, onUnmerge }: { agent: AgentSummary; onBack: () => void; onUnmerge: (alias: string) => void }) {
+export function AgentStatement({ agent, agentNames, onBack, onUnmerge, onRename }: { agent: AgentSummary; agentNames: string[]; onBack: () => void; onUnmerge: (alias: string) => void; onRename: (to: string) => void }) {
   const [open, setOpen] = useState<PassportAccount | null>(null);
   const [filter, setFilter] = useState<FilterId>("all");
   const [q, setQ] = useState("");
@@ -65,7 +66,7 @@ export function AgentStatement({ agent, onBack, onUnmerge }: { agent: AgentSumma
       </div>
       <div className="border-b border-border pb-6">
         <div className="text-xs font-bold text-primary">كشف حساب وكيل</div>
-        <h2 className="font-display mt-1 text-2xl font-bold">{agent.name}</h2>
+        <RenameAgent name={agent.name} otherNames={agentNames} onRename={onRename} />
         {agent.aliases.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2 text-xs">
             <span className="text-muted-foreground">أسماء مدمجة:</span>
