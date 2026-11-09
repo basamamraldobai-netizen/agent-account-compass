@@ -39,7 +39,15 @@ const chunks = <T,>(a: T[], n = 500) => Array.from({ length: Math.ceil(a.length 
 async function persist(prev: State, next: State) {
   const nextIds = new Set(next.records.map((r) => r.id));
   const prevById = new Map(prev.records.map((r) => [r.id, r]));
-  const removed = prev.records.filter((r) => !nextIds.has(r.id)).map((r) => r.id);
+  const nextFiles = new Set(next.records.map((r) => r.file));
+  const goneFiles = [...new Set(prev.records.map((r) => r.file))].filter((f) => !nextFiles.has(f));
+  // Deleting a file row cascades to all its transactions in one request.
+  if (goneFiles.length) {
+    const { error } = await supabase.from("import_files").delete().in("name", goneFiles);
+    if (error) throw error;
+  }
+  const goneSet = new Set(goneFiles);
+  const removed = prev.records.filter((r) => !nextIds.has(r.id) && !goneSet.has(r.file)).map((r) => r.id);
   const upserts = next.records.filter((r) => prevById.get(r.id) !== r);
   for (const ids of chunks(removed, 200)) {
     const { error } = await supabase.from("transactions").delete().in("client_id", ids);
@@ -61,13 +69,6 @@ async function persist(prev: State, next: State) {
       })), { onConflict: "user_id,client_id" });
       if (error) throw error;
     }
-  }
-  // Files with no remaining transactions are removed.
-  const nextFiles = new Set(next.records.map((r) => r.file));
-  const goneFiles = [...new Set(prev.records.map((r) => r.file))].filter((f) => !nextFiles.has(f));
-  if (goneFiles.length) {
-    const { error } = await supabase.from("import_files").delete().in("name", goneFiles);
-    if (error) throw error;
   }
   const goneAliases = Object.keys(prev.aliases).filter((k) => !(k in next.aliases));
   if (goneAliases.length) {
