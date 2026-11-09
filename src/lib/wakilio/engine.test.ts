@@ -157,3 +157,43 @@ describe("shared receipts", () => {
     expect(summary?.accounts.map((account) => account.remaining)).toEqual([600, 600, 600]);
   });
 });
+
+import { suggestClusters, renameAgent, mergeAgents, resolveAgent } from "./engine";
+
+describe("agent clusters, merge and rename", () => {
+  it("groups four or five spellings of one agent into a single cluster", () => {
+    const names = ["وكالة الأمل للسفريات", "وكالة الامل للسفريات", "الأمل للسفريات", "الامل", "مكتب زوايا", "خالد عباس"];
+    const clusters = suggestClusters(names, 0.8);
+    expect(clusters).toHaveLength(1);
+    expect(clusters[0]!.names.sort()).toEqual(["الأمل للسفريات", "الامل", "وكالة الأمل للسفريات", "وكالة الامل للسفريات"].sort());
+  });
+
+  it("marks spelling-only clusters as exact and respects dismissed pairs", () => {
+    expect(suggestClusters(["مكتب زوايا", "مكتب زوايأ"], 0.8)[0]!.exact).toBe(true);
+    expect(suggestClusters(["مكتب زوايا", "مكتب زوايأ"], 0.8, ["مكتب زوايأ|مكتب زوايا"])).toHaveLength(0);
+  });
+
+  it("merges several names into one canonical name in one step", () => {
+    const aliases = mergeAgents({}, ["الامل", "مكتب الامل", "وكالة الامل"], "وكالة الامل");
+    for (const n of ["الامل", "مكتب الامل", "وكالة الامل"]) expect(resolveAgent(n, aliases)).toBe("وكالة الامل");
+  });
+
+  it("renaming an agent moves all its merged names to the new name", () => {
+    const merged = mergeAgents({}, ["زوايا", "مكتب زوايه"], "مكتب زوايا");
+    const renamed = renameAgent(merged, "مكتب زوايا", "مكتب زوايا للسفريات");
+    for (const n of ["زوايا", "مكتب زوايه", "مكتب زوايا"]) expect(resolveAgent(n, renamed)).toBe("مكتب زوايا للسفريات");
+  });
+
+  it("renaming back to an original merged spelling never creates a loop", () => {
+    const merged = mergeAgents({}, ["زوايا"], "مكتب زوايا");
+    const renamed = renameAgent(merged, "مكتب زوايا", "زوايا");
+    expect(resolveAgent("زوايا", renamed)).toBe("زوايا");
+    expect(resolveAgent("مكتب زوايا", renamed)).toBe("زوايا");
+  });
+
+  it("renaming to another agent's spelling merges into that agent", () => {
+    const aliases = mergeAgents({}, ["خالد"], "خالد عباس");
+    const renamed = renameAgent(aliases, "أبو خالد", "خالد");
+    expect(resolveAgent("أبو خالد", renamed)).toBe("خالد عباس");
+  });
+});
