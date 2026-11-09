@@ -1,8 +1,17 @@
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useMemo, useState } from "react";
-import { Sparkles, GitMerge, X, Search, Zap, Undo2, History, Crown } from "lucide-react";
-import { suggestClusters, type AgentSummary, type MergeCluster } from "@/lib/wakilio/engine";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Sparkles, GitMerge, X, Search, Zap, Undo2, History, Crown, Check, AlertTriangle, Users } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { nameKey, normalizeText, suggestClusters, type AgentSummary, type MergeCluster } from "@/lib/wakilio/engine";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 
@@ -19,6 +28,84 @@ function norm(s: string) {
     .trim();
 }
 
+type Totals = { p: number; due: number; paid: number; rem: number };
+
+/** One-step merge confirmation: review chosen names and type the unified agent name. */
+function MergeConfirmDialog({ open, names, suggested, totals, byName, onConfirm, onClose }: {
+  open: boolean;
+  names: string[];
+  suggested: string;
+  totals: Totals;
+  byName: Map<string, AgentSummary>;
+  onConfirm: (into: string) => void;
+  onClose: () => void;
+}) {
+  const [value, setValue] = useState(suggested);
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (open) { setValue(suggested); requestAnimationFrame(() => input.current?.select()); } }, [open, suggested]);
+  const next = normalizeText(value);
+  // A typed name that matches another agent (outside this selection) joins that agent.
+  const clash = next ? [...byName.keys()].find((n) => !names.includes(n) && nameKey(n) === nameKey(next)) : undefined;
+  const into = clash ?? next;
+  const confirm = () => { if (into) onConfirm(into); };
+
+  return (
+    <AlertDialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <AlertDialogContent dir="rtl" className="max-w-md gap-5 rounded-2xl border-border bg-card p-6 text-card-foreground shadow-2xl">
+        <AlertDialogHeader className="space-y-2 text-right sm:text-right">
+          <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-primary/12 text-primary ring-1 ring-primary/25"><GitMerge className="h-5 w-5" /></div>
+          <AlertDialogTitle className="font-display text-center text-lg">تأكيد دمج أسماء الوكيل</AlertDialogTitle>
+          <AlertDialogDescription className="text-center">ستُجمع كل عمليات هذه الأسماء في كشف واحد بالاسم الموحد، ويمكنك فك الدمج لاحقاً.</AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <div className="space-y-3">
+          <div className="rounded-xl border border-border bg-secondary/60 p-3">
+            <div className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Users className="h-3.5 w-3.5" /> الأسماء المحددة (<span className="num">{names.length}</span>)</div>
+            <div className="flex max-h-28 flex-wrap gap-1.5 overflow-y-auto">
+              {names.map((n) => (
+                <span key={n} className="inline-flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ring-border">
+                  {n}<span className="num text-[10px] font-normal text-muted-foreground">{fmt(byName.get(n)?.passports ?? 0)} جواز</span>
+                </span>
+              ))}
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2 border-t border-border/70 pt-2 text-center text-[11px]">
+              <div><div className="text-muted-foreground">الجوازات</div><div className="num font-bold text-foreground">{fmt(totals.p)}</div></div>
+              <div><div className="text-muted-foreground">الواصل</div><div className="num font-bold text-primary">{fmt(totals.paid)}</div></div>
+              <div><div className="text-muted-foreground">المتبقي</div><div className="num font-bold text-destructive">{fmt(totals.rem)}</div></div>
+            </div>
+          </div>
+
+          <label className="block rounded-xl border border-primary/40 bg-primary/10 px-4 py-3">
+            <span className="text-[11px] text-primary">الاسم الموحد للوكيل</span>
+            <input
+              ref={input}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); confirm(); } }}
+              placeholder="اكتب اسم الوكيل المعتمد…"
+              aria-label="الاسم الموحد للوكيل"
+              className="font-display mt-1 w-full rounded-[10px] border border-border bg-card px-3 py-2 text-base font-bold text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
+            />
+            <span className="mt-1.5 block text-[11px] text-muted-foreground">يمكنك تعديل الاسم المقترح أو كتابة اسم جديد بالكامل</span>
+          </label>
+
+          {clash && (
+            <div className="flex items-start gap-2 rounded-xl bg-warning/12 p-3 text-xs text-warning ring-1 ring-inset ring-warning/30">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>يوجد وكيل آخر بنفس الاسم «{clash}». عند التأكيد ستُضم هذه الأسماء إلى حسابه.</span>
+            </div>
+          )}
+        </div>
+
+        <AlertDialogFooter className="gap-2 sm:flex-row-reverse sm:justify-start sm:space-x-0">
+          <Button onClick={confirm} disabled={!into} className="flex-1 gap-1.5 rounded-[11px]"><Check className="h-4 w-4" /> تأكيد الدمج</Button>
+          <AlertDialogCancel onClick={onClose} className="mt-0 flex-1 rounded-[11px] hover:bg-muted">إلغاء والرجوع</AlertDialogCancel>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 const pairKeys = (names: string[]) => names.flatMap((a, i) => names.slice(i + 1).map((b) => `${a}|${b}`));
 
 function ClusterCard({ cluster, byName, onMerge, onDismiss }: {
@@ -30,6 +117,7 @@ function ClusterCard({ cluster, byName, onMerge, onDismiss }: {
   const ordered = [...cluster.names].sort((a, b) => (byName.get(b)?.passports ?? 0) - (byName.get(a)?.passports ?? 0));
   const [picked, setPicked] = useState<string[]>(ordered);
   const [main, setMain] = useState(ordered[0]!);
+  const [confirming, setConfirming] = useState(false);
   const chosen = ordered.filter((n) => picked.includes(n));
   const total = chosen.reduce((t, n) => {
     const a = byName.get(n);
@@ -101,7 +189,7 @@ function ClusterCard({ cluster, byName, onMerge, onDismiss }: {
       <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-secondary/60 px-3 py-2 text-xs">
         <span className="text-muted-foreground">بعد الدمج: <span className="num font-semibold text-foreground">{fmt(total.p)}</span> جواز · الواصل <span className="num font-semibold text-primary">{fmt(total.paid)}</span> · المتبقي <span className="num font-semibold text-destructive">{fmt(total.rem)}</span></span>
         <div className="flex gap-2">
-          <Button size="sm" disabled={!canMerge} onClick={() => onMerge(chosen, main)} className="gap-1.5 rounded-[11px]">
+          <Button size="sm" disabled={!canMerge} onClick={() => setConfirming(true)} className="gap-1.5 rounded-[11px]">
             <GitMerge className="h-3.5 w-3.5" /> دمج <span className="num">{chosen.length}</span> في «{main}»
           </Button>
           <Button size="sm" variant="outline" onClick={() => onDismiss(pairKeys(cluster.names))} aria-label="تجاهل المجموعة" title="ليست نفس الوكيل" className="rounded-[11px] hover:border-destructive/60">
@@ -109,6 +197,16 @@ function ClusterCard({ cluster, byName, onMerge, onDismiss }: {
           </Button>
         </div>
       </div>
+
+      <MergeConfirmDialog
+        open={confirming}
+        names={chosen}
+        suggested={main}
+        totals={total}
+        byName={byName}
+        onClose={() => setConfirming(false)}
+        onConfirm={(into) => { setConfirming(false); onMerge(chosen, into); }}
+      />
     </div>
   );
 }

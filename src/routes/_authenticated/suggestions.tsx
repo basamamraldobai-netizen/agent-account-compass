@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { toast } from "sonner";
-import { mergeAgents, summarize } from "@/lib/wakilio/engine";
+import { mergeAgents, resolveAgent, summarize } from "@/lib/wakilio/engine";
 import { useWakilio } from "@/components/wakilio/WakilioContext";
 import { MergeSuggestions } from "@/components/wakilio/MergeSuggestions";
 export const Route = createFileRoute("/_authenticated/suggestions")({
@@ -18,8 +18,9 @@ function Suggestions() {
     agents={agents}
     dismissed={state.dismissed}
     onMerge={(from, into) => {
+      const aliases = mergeAgents(state.aliases, from, into);
       setState((s) => ({ ...s, aliases: mergeAgents(s.aliases, from, into) }));
-      toast.success(`تم دمج ${from.length - 1} أسماء في «${into}»`);
+      toast.success(`تم دمج ${from.length} أسماء في «${resolveAgent(into, aliases)}»`);
     }}
     onMergeMany={(groups) => {
       setState((s) => ({ ...s, aliases: groups.reduce((acc, g) => mergeAgents(acc, g.from, g.into), s.aliases) }));
