@@ -220,6 +220,64 @@ export function suggestMerges(names: string[], threshold = 0.8): MergeSuggestion
   return out.sort((p, q) => q.score - p.score);
 }
 
+export type MergeCluster = { names: string[]; score: number; exact: boolean };
+
+/** Name similarity that also catches one spelling contained in a longer one ("الامل" ⊂ "وكالة الأمل"). */
+export function agentSimilarity(a: string, b: string): number {
+  const base = similarity(a, b);
+  const x = nameKey(a), y = nameKey(b);
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
+  if (short.length >= 4 && long.includes(short)) return Math.max(base, 0.75 + 0.2 * (short.length / long.length));
+  return base;
+}
+
+/** Groups every spelling of the same agent into one cluster (3, 4, 5+ names), skipping dismissed pairs. */
+export function suggestClusters(names: string[], threshold = 0.8, dismissed: string[] = []): MergeCluster[] {
+  const skip = new Set(dismissed);
+  const parent = names.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i]!)));
+  const best = new Map<number, number>();
+  for (let i = 0; i < names.length; i++)
+    for (let j = i + 1; j < names.length; j++) {
+      const a = names[i]!, b = names[j]!;
+      if (skip.has(`${a}|${b}`) || skip.has(`${b}|${a}`)) continue;
+      const s = agentSimilarity(a, b);
+      if (s < threshold) continue;
+      const ra = find(i), rb = find(j);
+      const prev = Math.max(best.get(ra) ?? 0, best.get(rb) ?? 0, s);
+      parent[ra] = rb;
+      best.set(rb, prev);
+    }
+  const groups = new Map<number, string[]>();
+  names.forEach((n, i) => { const r = find(i); groups.set(r, [...(groups.get(r) ?? []), n]); });
+  return [...groups.entries()].filter(([, g]) => g.length > 1).map(([r, g]) => ({
+    names: g,
+    score: best.get(r) ?? threshold,
+    exact: g.every((n) => nameKey(n) === nameKey(g[0]!)),
+  })).sort((p, q) => Number(q.exact) - Number(p.exact) || q.names.length - p.names.length || q.score - p.score);
+}
+
+/** Renames (or merges) agent `from` into `to`; every alias pointing at `from` follows, with no cycles. */
+export function renameAgent(aliases: Record<string, string>, from: string, to: string): Record<string, string> {
+  const name = normalizeText(to);
+  if (!name || name === from) return aliases;
+  // Renaming to a spelling owned by another agent merges into that agent.
+  const owner = resolveAgent(name, aliases);
+  const target = owner !== name && owner !== from ? owner : name;
+  const next: Record<string, string> = {};
+  for (const [k, v] of Object.entries(aliases)) {
+    const t = v === from ? target : v;
+    if (k === target || k === t) continue;
+    next[k] = t;
+  }
+  if (from !== target) next[from] = target;
+  return next;
+}
+
+export function mergeAgents(aliases: Record<string, string>, from: string[], into: string): Record<string, string> {
+  return from.filter((f) => f !== into).reduce((acc, f) => renameAgent(acc, f, into), aliases);
+}
+
 export type PassportAccount = {
   key: string;
   name: string;
