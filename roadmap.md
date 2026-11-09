@@ -9,3 +9,4 @@
 - [x] Pencil icon to rename an agent, with a confirmation popup.
 - [x] Suggestions box groups all spellings of one agent with money details, canonical pick and exclude.
 - [x] One-click merge of spelling-only groups and merged-names history with unmerge.
+- [x] Merge confirmation popup with a hand-typed unified name (one step).
