@@ -14,3 +14,4 @@
 - Express workspace styling through semantic global tokens and the shared Button variants to keep the reference design consistent without coupling it to Excel engine logic.
 - Public landing (with the live login card) owns `/`; the signed-in workspace home is `/dashboard`, so signed-out visitors land on marketing and signed-in users are redirected in.
 - Derive shared-receipt person rows in the pure accounting engine, retaining original Cloud transactions and stable person keys; this preserves re-import identity and allows existing saved receipts to use the same processing. Uncertain later allocations remain unassigned to passports, with the receipt counted once in agent totals and disclosed in details.
+- Agent rename and multi-name merge both go through pure alias rewrites in engine.ts (renameAgent/mergeAgents) so every alias follows the canonical name without cycles, and raw Excel names stay untouched for unmerge.
