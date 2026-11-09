@@ -34,7 +34,11 @@ export function RenameAgent({ name, otherNames, onRename }: { name: string; othe
             ref={input}
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") ask(); if (e.key === "Escape") cancel(); }}
+            onKeyDown={(e) => {
+              // preventDefault stops the same Enter press from activating the dialog's focused button.
+              if (e.key === "Enter") { e.preventDefault(); ask(); }
+              if (e.key === "Escape") { e.preventDefault(); cancel(); }
+            }}
             aria-label="اسم الوكيل الجديد"
             className="font-display min-w-0 flex-1 rounded-[11px] border border-primary/50 bg-card px-3 py-1.5 text-xl font-bold outline-none ring-2 ring-primary/15 focus:border-primary"
           />
