@@ -127,7 +127,8 @@ function ClusterCard({ cluster, byName, onMerge, onDismiss }: {
     setPicked((p) => (on ? [...p, n] : p.filter((x) => x !== n)));
     if (!on && n === main) setMain(ordered.find((x) => x !== n && picked.includes(x)) ?? main);
   };
-  const canMerge = chosen.length >= 2 && chosen.includes(main);
+  const canMerge = chosen.length >= 2;
+  const suggested = chosen.includes(main) ? main : (chosen[0] ?? main);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
@@ -138,7 +139,7 @@ function ClusterCard({ cluster, byName, onMerge, onDismiss }: {
             ? <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[10px] font-semibold text-primary ring-1 ring-inset ring-primary/30">فروق إملائية فقط</span>
             : <span className="num rounded-full bg-chart-3/15 px-2 py-0.5 text-[10px] font-semibold text-chart-3 ring-1 ring-inset ring-chart-3/30">تشابه حتى {Math.round(cluster.score * 100)}%</span>}
         </div>
-        <span className="text-[11px] text-muted-foreground">حدد الأسماء واختر الاسم المعتمد</span>
+        <span className="text-[11px] text-muted-foreground">حدد الأسماء التي تريد دمجها</span>
       </div>
 
       <div className="overflow-x-auto">
@@ -151,34 +152,20 @@ function ClusterCard({ cluster, byName, onMerge, onDismiss }: {
               <th className="p-2 text-right font-semibold">المستحق</th>
               <th className="p-2 text-right font-semibold">الواصل</th>
               <th className="p-2 text-right font-semibold">المتبقي</th>
-              <th className="p-2 text-center font-semibold">المعتمد</th>
             </tr>
           </thead>
           <tbody>
             {ordered.map((n) => {
               const a = byName.get(n);
               const on = picked.includes(n);
-              const isMain = n === main && on;
               return (
-                <tr key={n} className={`border-b border-border/60 transition-colors last:border-0 ${isMain ? "bg-primary/8" : ""} ${on ? "" : "opacity-45"}`}>
+                <tr key={n} className={`border-b border-border/60 transition-colors last:border-0 ${on ? "" : "opacity-45"}`}>
                   <td className="p-2"><Checkbox checked={on} onCheckedChange={(v) => toggle(n, v === true)} aria-label={`تضمين ${n}`} /></td>
                   <td className="p-2 font-semibold">{n}{a && a.aliases.length > 0 && <span className="num mr-1.5 text-[10px] font-normal text-muted-foreground">(+{a.aliases.length})</span>}</td>
                   <td className="num p-2">{fmt(a?.passports ?? 0)}</td>
                   <td className="num p-2 text-accent">{fmt(a?.total ?? 0)}</td>
                   <td className="num p-2 text-primary">{fmt(a?.paid ?? 0)}</td>
                   <td className="num p-2 text-destructive">{fmt(a?.remaining ?? 0)}</td>
-                  <td className="p-2 text-center">
-                    <button
-                      type="button"
-                      disabled={!on}
-                      onClick={() => setMain(n)}
-                      aria-label={`اعتماد ${n} كاسم رسمي`}
-                      aria-pressed={isMain}
-                      className={`inline-grid h-7 w-7 place-items-center rounded-full ring-1 ring-inset transition ${isMain ? "bg-primary text-primary-foreground ring-primary" : "text-muted-foreground ring-border hover:ring-primary/60"}`}
-                    >
-                      {isMain ? <Crown className="h-3.5 w-3.5" /> : <span className="h-2 w-2 rounded-full bg-current opacity-40" />}
-                    </button>
-                  </td>
                 </tr>
               );
             })}
@@ -190,7 +177,7 @@ function ClusterCard({ cluster, byName, onMerge, onDismiss }: {
         <span className="text-muted-foreground">بعد الدمج: <span className="num font-semibold text-foreground">{fmt(total.p)}</span> جواز · الواصل <span className="num font-semibold text-primary">{fmt(total.paid)}</span> · المتبقي <span className="num font-semibold text-destructive">{fmt(total.rem)}</span></span>
         <div className="flex gap-2">
           <Button size="sm" disabled={!canMerge} onClick={() => setConfirming(true)} className="gap-1.5 rounded-[11px]">
-            <GitMerge className="h-3.5 w-3.5" /> دمج <span className="num">{chosen.length}</span> في «{main}»
+            <GitMerge className="h-3.5 w-3.5" /> دمج <span className="num">({chosen.length})</span>
           </Button>
           <Button size="sm" variant="outline" onClick={() => onDismiss(pairKeys(cluster.names))} aria-label="تجاهل المجموعة" title="ليست نفس الوكيل" className="rounded-[11px] hover:border-destructive/60">
             <X className="h-3.5 w-3.5" /> تجاهل
@@ -201,7 +188,7 @@ function ClusterCard({ cluster, byName, onMerge, onDismiss }: {
       <MergeConfirmDialog
         open={confirming}
         names={chosen}
-        suggested={main}
+        suggested={suggested}
         totals={total}
         byName={byName}
         onClose={() => setConfirming(false)}
