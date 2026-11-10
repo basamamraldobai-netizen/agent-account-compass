@@ -12,3 +12,5 @@
 - [x] Merge confirmation popup with a hand-typed unified name (one step).
 # Import
 - [x] Live cloud-sync progress window (percent, saved count, agents, time left, completion).
+# Passport statement
+- [x] Order displayed passport names alphabetically, including shared receipts and filtered/printed statements, without changing accounting data.
