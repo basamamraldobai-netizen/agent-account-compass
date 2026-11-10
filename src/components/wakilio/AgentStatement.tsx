@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import type { AgentSummary, PassportAccount } from "@/lib/wakilio/engine";
 import { RenameAgent } from "./RenameAgent";
+import { sortPassportNames } from "./passport-order";
 
 export const fmt = (n: number) => n.toLocaleString("en-US");
 
@@ -38,11 +39,7 @@ export function AgentStatement({ agent, agentNames, onBack, onUnmerge, onRename 
   const filtered = agent.accounts
     .filter((account) => receiptFilter ? sharedOf(account).includes(receiptFilter) : (activeFilter?.test(account) ?? true))
     .filter(matches);
-  // Cluster partners of one shared receipt as adjacent rows, ordered by receipt number; singles keep their order after.
-  const num = (s: string) => { const n = Number(s.replace(/\D/g, "")); return Number.isFinite(n) && s !== "—" ? n : Infinity; };
-  const rows = filtered.map((a, idx) => ({ a, idx, key: sharedOf(a)[0] }))
-    .sort((x, y) => (x.key ? 0 : 1) - (y.key ? 0 : 1) || (x.key && y.key ? num(x.key) - num(y.key) || x.key.localeCompare(y.key) : 0) || x.idx - y.idx)
-    .map(({ a }) => a);
+  const rows = sortPassportNames(filtered);
   const receiptInfo = (rc: string) => {
     const r = agent.accounts.flatMap((a) => a.records).find((x) => x.sharedReceipt && (x.receipt || "—") === rc)?.sharedReceipt;
     return r ? { total: r.originalPaid, count: r.participants.length, names: r.participants } : null;
@@ -122,8 +119,8 @@ export function AgentStatement({ agent, agentNames, onBack, onUnmerge, onRename 
               const isShared = shared.length > 0;
               const linked = hoverReceipt !== null && shared.includes(hoverReceipt);
               const groupKey = shared[0];
-              const prevKey = i > 0 ? sharedOf(rows[i - 1]!)[0] : undefined;
-              const info = groupKey && groupKey !== prevKey ? receiptInfo(groupKey) : null;
+              const firstInReceipt = groupKey && rows.findIndex((account) => sharedOf(account)[0] === groupKey) === i;
+              const info = firstInReceipt ? receiptInfo(groupKey) : null;
               return (
                 <Fragment key={acc.key}>
                 {info && groupKey && (
