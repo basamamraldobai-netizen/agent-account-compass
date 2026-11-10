@@ -15,3 +15,4 @@
 - Public landing (with the live login card) owns `/`; the signed-in workspace home is `/dashboard`, so signed-out visitors land on marketing and signed-in users are redirected in.
 - Derive shared-receipt person rows in the pure accounting engine, retaining original Cloud transactions and stable person keys; this preserves re-import identity and allows existing saved receipts to use the same processing. Uncertain later allocations remain unassigned to passports, with the receipt counted once in agent totals and disclosed in details.
 - Agent rename and multi-name merge both go through pure alias rewrites in engine.ts (renameAgent/mergeAgents) so every alias follows the canonical name without cycles, and raw Excel names stay untouched for unmerge.
+- Tracked saves (Excel imports) pass { track: fileName } to the store's setState; the store reports per-batch progress as `sync`, so the progress window reflects real saved rows rather than a timer.
