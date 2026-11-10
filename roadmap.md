@@ -10,3 +10,5 @@
 - [x] Suggestions box groups all spellings of one agent with money details, canonical pick and exclude.
 - [x] One-click merge of spelling-only groups and merged-names history with unmerge.
 - [x] Merge confirmation popup with a hand-typed unified name (one step).
+# Import
+- [x] Live cloud-sync progress window (percent, saved count, agents, time left, completion).
