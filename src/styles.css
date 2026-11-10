@@ -199,7 +199,7 @@
 @media print { .workspace-topbar, .workspace-sidebar, .sidebar-backdrop, .workspace-main button { display: none !important; } .workspace-layout { display: block !important; } .workspace-main { padding: 0; } .table-wrap { overflow: visible; } .statement-table { min-width: 0; font-size: 9px; } .statement-table th, .statement-table td { padding: 5px; } }
 
 /* Cloud-sync progress window */
-.sync-overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: color-mix(in oklab, var(--background) 35%, transparent); backdrop-filter: blur(10px) saturate(130%); animation: sync-fade .25s ease; }
+.sync-overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: color-mix(in oklab, var(--background) 25%, transparent); backdrop-filter: blur(4px) saturate(120%); animation: sync-fade .25s ease; }
 .sync-card { width: 100%; max-width: 470px; padding: 30px 26px 22px; border-radius: 24px; border: 1px solid color-mix(in oklab, var(--primary) 22%, var(--border)); background: color-mix(in oklab, var(--card) 78%, transparent); backdrop-filter: blur(22px); box-shadow: var(--panel-shadow), 0 0 60px color-mix(in oklab, var(--primary) 12%, transparent); animation: sync-rise .3s ease; }
 .sync-emblem { position: relative; width: 128px; height: 128px; margin-inline: auto; }
 .sync-orbit { position: absolute; border-radius: 9999px; border: 1px solid color-mix(in oklab, var(--primary) 30%, transparent); animation: sync-spin 7s linear infinite; }
