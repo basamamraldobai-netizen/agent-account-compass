@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import type { TxRecord } from "@/lib/wakilio/engine";
 
 export type State = { records: TxRecord[]; aliases: Record<string, string>; dismissed: string[] };
+/** Live progress of a tracked save (e.g. an Excel import) to Lovable Cloud. */
+export type SyncProgress = { file: string; total: number; saved: number; agents: number; startedAt: number; finishedAt?: number; status: "saving" | "done" | "error" };
 const empty: State = { records: [], aliases: {}, dismissed: [] };
 
 async function fetchAll<T>(table: "transactions", select: string): Promise<T[]> {
@@ -36,7 +38,7 @@ async function load(): Promise<State> {
 const chunks = <T,>(a: T[], n = 500) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
 /** Persists the difference between two states to Lovable Cloud. */
-async function persist(prev: State, next: State) {
+async function persist(prev: State, next: State, onProgress?: (saved: number) => void) {
   const nextIds = new Set(next.records.map((r) => r.id));
   const prevById = new Map(prev.records.map((r) => [r.id, r]));
   const nextFiles = new Set(next.records.map((r) => r.file));
@@ -62,12 +64,15 @@ async function persist(prev: State, next: State) {
     if (ae) throw ae;
     const fileId = new Map(files!.map((f) => [f.name, f.id]));
     const agentId = new Map((agents ?? []).map((a) => [a.name, a.id]));
-    for (const part of chunks(upserts)) {
+    let saved = 0;
+    for (const part of chunks(upserts, 1000)) {
       const { error } = await supabase.from("transactions").upsert(part.map((r) => ({
         client_id: r.id, file_id: fileId.get(r.file)!, agent_id: agentId.get(r.agentRaw) ?? null, sheet: r.sheet, agent_raw: r.agentRaw, passport: r.passport, receipt: r.receipt,
         paid: r.paid, remaining: r.remaining, tx_date: r.date, status: r.status, destination: r.destination, profession: r.profession, notes: r.notes,
       })), { onConflict: "user_id,client_id" });
       if (error) throw error;
+      saved += part.length;
+      onProgress?.(saved);
     }
   }
   const goneAliases = Object.keys(prev.aliases).filter((k) => !(k in next.aliases));
@@ -90,6 +95,7 @@ async function persist(prev: State, next: State) {
 export function useWakilioStore() {
   const [state, setLocal] = useState<State>(empty);
   const [loading, setLoading] = useState(true);
+  const [sync, setSync] = useState<SyncProgress | null>(null);
   const stateRef = useRef(state);
   const queue = useRef(Promise.resolve());
 
@@ -108,17 +114,38 @@ export function useWakilioStore() {
 
   useEffect(() => { void reload(); }, [reload]);
 
-  const setState = useCallback((updater: State | ((s: State) => State)) => {
+  const setState = useCallback((updater: State | ((s: State) => State), opts?: { track?: string }) => {
     const prev = stateRef.current;
     const next = typeof updater === "function" ? updater(prev) : updater;
     stateRef.current = next;
     setLocal(next);
-    queue.current = queue.current.then(() => persist(prev, next)).catch(async (e) => {
-      console.error(e);
-      toast.error("تعذر حفظ التغييرات في السحابة، تمت إعادة تحميل البيانات");
-      await reload();
-    });
+    let onProgress: ((n: number) => void) | undefined;
+    if (opts?.track) {
+      const prevById = new Map(prev.records.map((r) => [r.id, r]));
+      const changed = next.records.filter((r) => prevById.get(r.id) !== r);
+      setSync({ file: opts.track, total: changed.length, saved: 0, agents: new Set(changed.map((r) => r.agentRaw).filter(Boolean)).size, startedAt: Date.now(), status: "saving" });
+      onProgress = (saved) => setSync((s) => (s ? { ...s, saved } : s));
+    }
+    queue.current = queue.current
+      .then(() => persist(prev, next, onProgress))
+      .then(() => { if (onProgress) setSync((s) => (s ? { ...s, saved: s.total, status: "done", finishedAt: Date.now() } : s)); })
+      .catch(async (e) => {
+        console.error(e);
+        if (onProgress) setSync((s) => (s ? { ...s, status: "error", finishedAt: Date.now() } : s));
+        toast.error("تعذر حفظ التغييرات في السحابة، تمت إعادة تحميل البيانات");
+        await reload();
+      });
   }, [reload]);
 
-  return [state, setState, { loading }] as const;
+  // Warn before leaving the page while a tracked save is still running.
+  useEffect(() => {
+    if (sync?.status !== "saving") return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [sync?.status]);
+
+  const clearSync = useCallback(() => setSync(null), []);
+
+  return [state, setState, { loading, sync, clearSync }] as const;
 }

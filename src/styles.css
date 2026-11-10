@@ -197,3 +197,34 @@
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
 @media print { .workspace-topbar, .workspace-sidebar, .sidebar-backdrop, .workspace-main button { display: none !important; } .workspace-layout { display: block !important; } .workspace-main { padding: 0; } .table-wrap { overflow: visible; } .statement-table { min-width: 0; font-size: 9px; } .statement-table th, .statement-table td { padding: 5px; } }
+
+/* Cloud-sync progress window */
+.sync-overlay { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px; background: color-mix(in oklab, var(--background) 25%, transparent); backdrop-filter: blur(4px) saturate(120%); animation: sync-fade .25s ease; }
+.sync-card { width: 100%; max-width: 470px; padding: 30px 26px 22px; border-radius: 24px; border: 1px solid color-mix(in oklab, var(--primary) 22%, var(--border)); background: color-mix(in oklab, var(--card) 78%, transparent); backdrop-filter: blur(22px); box-shadow: var(--panel-shadow), 0 0 60px color-mix(in oklab, var(--primary) 12%, transparent); animation: sync-rise .3s ease; }
+.sync-emblem { position: relative; width: 128px; height: 128px; margin-inline: auto; }
+.sync-orbit { position: absolute; border-radius: 9999px; border: 1px solid color-mix(in oklab, var(--primary) 30%, transparent); animation: sync-spin 7s linear infinite; }
+.sync-orbit::before { content: ""; position: absolute; top: -4px; left: 50%; width: 8px; height: 8px; margin-left: -4px; border-radius: 9999px; background: var(--primary); box-shadow: 0 0 12px 3px color-mix(in oklab, var(--primary) 70%, transparent); }
+.sync-orbit--outer { inset: 0; }
+.sync-orbit--mid { inset: 15px; border-style: dashed; border-color: color-mix(in oklab, var(--accent) 35%, transparent); animation-duration: 4.5s; animation-direction: reverse; }
+.sync-orbit--mid::before { background: var(--accent); box-shadow: 0 0 10px 2px color-mix(in oklab, var(--accent) 70%, transparent); width: 6px; height: 6px; margin-left: -3px; top: -3px; }
+.sync-orbit--inner { inset: 28px; animation-duration: 3s; border-color: color-mix(in oklab, var(--primary) 18%, transparent); }
+.sync-orbit--inner::before { width: 5px; height: 5px; margin-left: -2.5px; top: -2.5px; }
+.sync-core { position: absolute; inset: 38px; display: grid; place-items: center; border-radius: 9999px; color: var(--primary); background: radial-gradient(circle, color-mix(in oklab, var(--primary) 28%, var(--card)), color-mix(in oklab, var(--primary) 8%, var(--card))); box-shadow: 0 0 28px color-mix(in oklab, var(--primary) 40%, transparent), inset 0 0 14px color-mix(in oklab, var(--primary) 25%, transparent); animation: sync-pulse 2.2s ease-in-out infinite; }
+.sync-core.is-error { color: var(--destructive); background: color-mix(in oklab, var(--destructive) 14%, var(--card)); box-shadow: 0 0 24px color-mix(in oklab, var(--destructive) 35%, transparent); }
+.sync-emblem.is-still .sync-orbit, .sync-emblem.is-still .sync-core { animation-play-state: paused; }
+.sync-track { height: 10px; border-radius: 9999px; overflow: hidden; background: var(--secondary); border: 1px solid var(--border); }
+.sync-fill { position: relative; height: 100%; border-radius: inherit; background-image: var(--gradient-primary); box-shadow: 0 0 14px color-mix(in oklab, var(--primary) 60%, transparent); transition: width .5s ease; overflow: hidden; }
+.sync-fill::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--foreground) 35%, transparent), transparent); animation: sync-shine 1.6s linear infinite; }
+.sync-fill.is-error { background: var(--destructive); box-shadow: none; }
+.sync-stat { display: flex; flex-direction: column; gap: 5px; min-width: 0; padding: 12px; border-radius: 14px; border: 1px solid var(--border); background: color-mix(in oklab, var(--secondary) 70%, transparent); }
+.sync-notice { display: flex; align-items: center; gap: 9px; padding: 11px 13px; border-radius: 13px; font-size: 12px; line-height: 1.7; color: var(--warning); border: 1px solid color-mix(in oklab, var(--warning) 30%, transparent); background: color-mix(in oklab, var(--warning) 9%, transparent); }
+.sync-notice.is-error { color: var(--destructive); border-color: color-mix(in oklab, var(--destructive) 30%, transparent); background: color-mix(in oklab, var(--destructive) 9%, transparent); }
+.sync-dot { width: 9px; height: 9px; border-radius: 9999px; background: var(--primary); box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 60%, transparent); animation: sync-ping 1.6s ease-out infinite; }
+.sync-dot.is-offline { background: var(--destructive); animation: none; }
+@keyframes sync-spin { to { transform: rotate(360deg); } }
+@keyframes sync-pulse { 50% { transform: scale(1.05); box-shadow: 0 0 40px color-mix(in oklab, var(--primary) 55%, transparent), inset 0 0 14px color-mix(in oklab, var(--primary) 25%, transparent); } }
+@keyframes sync-shine { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@keyframes sync-ping { 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+@keyframes sync-fade { from { opacity: 0; } }
+@keyframes sync-rise { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+@media (prefers-reduced-motion: reduce) { .sync-orbit, .sync-core, .sync-fill::after, .sync-dot { animation: none; } }
