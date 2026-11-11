@@ -89,6 +89,27 @@ export type Database = {
         }
         Relationships: []
       }
+      receipt_allocations: {
+        Row: {
+          shares: Json
+          source_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          shares?: Json
+          source_id: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          shares?: Json
+          source_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           agent_id: string | null
