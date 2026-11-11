@@ -16,6 +16,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAgentsRouteImport } from './routes/_authenticated/agents'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedImportsRouteImport } from './routes/_authenticated/imports'
+import { Route as AuthenticatedSharedReceiptsRouteImport } from './routes/_authenticated/shared-receipts'
 import { Route as AuthenticatedSuggestionsRouteImport } from './routes/_authenticated/suggestions'
 
 const IndexRoute = IndexRouteImport.update({
@@ -52,6 +53,12 @@ const AuthenticatedImportsRoute = AuthenticatedImportsRouteImport.update({
   path: '/imports',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSharedReceiptsRoute =
+  AuthenticatedSharedReceiptsRouteImport.update({
+    id: '/shared-receipts',
+    path: '/shared-receipts',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedSuggestionsRoute =
   AuthenticatedSuggestionsRouteImport.update({
     id: '/suggestions',
@@ -66,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/agents': typeof AuthenticatedAgentsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/imports': typeof AuthenticatedImportsRoute
+  '/shared-receipts': typeof AuthenticatedSharedReceiptsRoute
   '/suggestions': typeof AuthenticatedSuggestionsRoute
 }
 export interface FileRoutesByTo {
@@ -75,6 +83,7 @@ export interface FileRoutesByTo {
   '/agents': typeof AuthenticatedAgentsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/imports': typeof AuthenticatedImportsRoute
+  '/shared-receipts': typeof AuthenticatedSharedReceiptsRoute
   '/suggestions': typeof AuthenticatedSuggestionsRoute
 }
 export interface FileRoutesById {
@@ -86,6 +95,7 @@ export interface FileRoutesById {
   '/_authenticated/agents': typeof AuthenticatedAgentsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/imports': typeof AuthenticatedImportsRoute
+  '/_authenticated/shared-receipts': typeof AuthenticatedSharedReceiptsRoute
   '/_authenticated/suggestions': typeof AuthenticatedSuggestionsRoute
 }
 export interface FileRouteTypes {
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/agents'
     | '/dashboard'
     | '/imports'
+    | '/shared-receipts'
     | '/suggestions'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/agents'
     | '/dashboard'
     | '/imports'
+    | '/shared-receipts'
     | '/suggestions'
   id:
     | '__root__'
@@ -116,6 +128,7 @@ export interface FileRouteTypes {
     | '/_authenticated/agents'
     | '/_authenticated/dashboard'
     | '/_authenticated/imports'
+    | '/_authenticated/shared-receipts'
     | '/_authenticated/suggestions'
   fileRoutesById: FileRoutesById
 }
@@ -177,6 +190,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedImportsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/shared-receipts': {
+      id: '/_authenticated/shared-receipts'
+      path: '/shared-receipts'
+      fullPath: '/shared-receipts'
+      preLoaderRoute: typeof AuthenticatedSharedReceiptsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/suggestions': {
       id: '/_authenticated/suggestions'
       path: '/suggestions'
@@ -191,6 +211,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAgentsRoute: typeof AuthenticatedAgentsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedImportsRoute: typeof AuthenticatedImportsRoute
+  AuthenticatedSharedReceiptsRoute: typeof AuthenticatedSharedReceiptsRoute
   AuthenticatedSuggestionsRoute: typeof AuthenticatedSuggestionsRoute
 }
 
@@ -198,6 +219,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAgentsRoute: AuthenticatedAgentsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedImportsRoute: AuthenticatedImportsRoute,
+  AuthenticatedSharedReceiptsRoute: AuthenticatedSharedReceiptsRoute,
   AuthenticatedSuggestionsRoute: AuthenticatedSuggestionsRoute,
 }
 
