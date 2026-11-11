@@ -49,9 +49,9 @@ export function AllocationDialog({ receipt, onClose, showAgentLink = false }: { 
 
   return (
     <Dialog open={!!receipt} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent dir="rtl" className="max-h-[92vh] max-w-2xl gap-4 overflow-y-auto rounded-2xl border-border bg-card p-5 text-card-foreground sm:p-6">
+      <DialogContent dir="rtl" className="max-h-[92vh] max-w-2xl gap-4 [&>button.absolute]:left-4 [&>button.absolute]:right-auto overflow-y-auto rounded-2xl border-border bg-card p-5 text-card-foreground sm:p-6">
         {receipt && check && <>
-          <DialogHeader className="space-y-2 pr-8 text-right sm:text-right">
+          <DialogHeader className="space-y-2 pl-8 text-right sm:text-right">
             <div className="flex items-center gap-3">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-chart-3/15 text-chart-3 ring-1 ring-chart-3/30"><Split className="h-5 w-5" /></span>
               <div className="min-w-0">
