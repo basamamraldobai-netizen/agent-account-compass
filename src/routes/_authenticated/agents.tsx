@@ -1,8 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Search, Users, FileUp, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
-import { renameAgent, resolveAgent, summarize } from "@/lib/wakilio/engine";
+import { renameAgent, resolveAgent } from "@/lib/wakilio/engine";
 import { useWakilio, useWakilioSummary } from "@/components/wakilio/WakilioContext";
 import { AgentStatement, Stat, fmt } from "@/components/wakilio/AgentStatement";
 import { Button } from "@/components/ui/button";

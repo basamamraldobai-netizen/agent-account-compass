@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
 import { Users, Wallet, CircleCheck, Clock, FileUp, Sparkles, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { summarize } from "@/lib/wakilio/engine";
+
 import { useWakilio, useWakilioSummary } from "@/components/wakilio/WakilioContext";
 import { Stat, fmt } from "@/components/wakilio/AgentStatement";
 

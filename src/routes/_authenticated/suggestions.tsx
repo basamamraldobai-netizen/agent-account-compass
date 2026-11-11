@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
 import { toast } from "sonner";
-import { mergeAgents, resolveAgent, summarize } from "@/lib/wakilio/engine";
+import { mergeAgents, resolveAgent } from "@/lib/wakilio/engine";
 import { useWakilio, useWakilioSummary } from "@/components/wakilio/WakilioContext";
 import { MergeSuggestions } from "@/components/wakilio/MergeSuggestions";
 export const Route = createFileRoute("/_authenticated/suggestions")({
