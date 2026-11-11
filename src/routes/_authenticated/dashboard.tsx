@@ -1,9 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
 import { Users, Wallet, CircleCheck, Clock, FileUp, Sparkles, FileSpreadsheet } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { summarize } from "@/lib/wakilio/engine";
-import { useWakilio } from "@/components/wakilio/WakilioContext";
+
+import { useWakilio, useWakilioSummary } from "@/components/wakilio/WakilioContext";
 import { Stat, fmt } from "@/components/wakilio/AgentStatement";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -18,7 +17,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 
 function Dashboard() {
   const [state] = useWakilio();
-  const agents = useMemo(() => summarize(state.records, state.aliases), [state.records, state.aliases]);
+  const { agents } = useWakilioSummary();
   const totals = agents.reduce((t, a) => ({ total: t.total + a.total, paid: t.paid + a.paid, rem: t.rem + a.remaining, passports: t.passports + a.passports }), { total: 0, paid: 0, rem: 0, passports: 0 });
   const files = new Set(state.records.map((r) => r.file)).size;
   const percent = totals.total ? Math.round(totals.paid / totals.total * 100) : 0;

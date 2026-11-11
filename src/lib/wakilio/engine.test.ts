@@ -204,3 +204,50 @@ describe("agent clusters, merge and rename", () => {
     expect(resolveAgent("م/زوايا", unmerged)).toBe("مكتب زوايا للسفريات");
   });
 });
+
+import { checkAllocation, listSharedReceipts, splitByWeights, suggestShares, passportKey, type Allocations } from "./engine";
+
+describe("manual shared-receipt allocation", () => {
+  const tx = (id: string, passport: string, paid: number, remaining: number): TxRecord => ({
+    id, passport, paid, remaining, agentRaw: "خالد عباس", file: "shared.csv", sheet: "s",
+    receipt: "16988", date: "", profession: "", status: "", destination: "", notes: "",
+  });
+  const names = "نزار امين + عاهد فاهم + فارس نصر";
+  const pending = [tx("1", names, 0, 10800), tx("2", "نزار امين", 1000, 2600), tx("3", names, 6000, 3800)];
+  const shares = (p: number[], r: number[]) => ["نزار امين", "عاهد فاهم", "فارس نصر"].map((name, i) => ({ key: passportKey(name), name, paid: p[i]!, remaining: r[i]! }));
+
+  it("a saved allocation assigns the 6,000 receipt to passports and keeps the agent total at 10,800", () => {
+    const before = summarize(pending, {})[0]!;
+    const allocations: Allocations = { "3": shares([1000, 2500, 2500], [1600, 1100, 1100]) };
+    const after = summarize(pending, {}, allocations)[0]!;
+    expect(after.pendingPaid).toBe(0);
+    expect(after.accounts.map((a) => a.remaining)).toEqual([1600, 1100, 1100]);
+    expect(after.paid).toBe(before.paid);
+    expect(after.remaining).toBe(before.remaining);
+    expect(after.total).toBe(10800);
+    expect(pending[2]!.passport).toBe(names);
+  });
+
+  it("ignores a saved allocation whose shares no longer add up to the receipt", () => {
+    const after = summarize(pending, {}, { "3": shares([1000, 1000, 1000], [0, 0, 3800]) })[0]!;
+    expect(after.pendingPaid).toBe(6000);
+  });
+
+  it("rejects mismatched totals and accepts exact ones", () => {
+    const receipt = { paid: 6000, remaining: 3800, participants: ["نزار امين", "عاهد فاهم", "فارس نصر"] };
+    expect(checkAllocation(receipt, shares([2000, 2000, 1999], [1800, 1000, 1000])).paidDiff).toBe(1);
+    expect(checkAllocation(receipt, shares([2000, 2000, 2000], [1800, 1000, 1000])).valid).toBe(true);
+    expect(checkAllocation(receipt, shares([7000, -500, -500], [1800, 1000, 1000])).valid).toBe(false);
+  });
+
+  it("splits equally or by prior debt to the cent", () => {
+    expect(splitByWeights(100, [1, 1, 1])).toEqual([33.34, 33.33, 33.33]);
+    const info = listSharedReceipts(summarize(pending, {}))[1]!;
+    expect(info.participants.map((p) => p.prior)).toEqual([2600, 3600, 3600]);
+    expect(info.needsReview).toBe(true);
+    const debt = suggestShares(info, "debt");
+    expect(debt.map((s) => s.paid)).toEqual([1591.84, 2204.08, 2204.08]);
+    expect(debt.reduce((t, s) => t + s.paid, 0)).toBeCloseTo(6000, 6);
+    expect(suggestShares(info, "equal").map((s) => s.paid)).toEqual([2000, 2000, 2000]);
+  });
+});

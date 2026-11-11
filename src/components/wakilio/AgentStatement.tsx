@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, ArrowRight, ChevronLeft, Printer, Search, Wallet, type LucideIcon } from "lucide-react";
-import { Fragment, useEffect, useState } from "react";
+import { AlertTriangle, ArrowRight, ChevronLeft, Printer, Search, Split, Wallet, type LucideIcon } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import type { AgentSummary, PassportAccount } from "@/lib/wakilio/engine";
+import { listSharedReceipts, type AgentSummary, type PassportAccount } from "@/lib/wakilio/engine";
+import { AllocationDialog } from "./AllocationDialog";
 import { RenameAgent } from "./RenameAgent";
 import { sortPassportNames } from "./passport-order";
 
@@ -31,6 +32,10 @@ export function AgentStatement({ agent, agentNames, onBack, onUnmerge, onRename 
   const [filter, setFilter] = useState<FilterId>("all");
   const [q, setQ] = useState("");
   const [hoverReceipt, setHoverReceipt] = useState<string | null>(null);
+  const [allocId, setAllocId] = useState<string | null>(null);
+  const sharedList = useMemo(() => listSharedReceipts([agent]), [agent]);
+  const allocReceipt = sharedList.find((r) => r.sourceId === allocId) ?? null;
+  const openAllocation = (sourceId: string) => { setOpen(null); setAllocId(sourceId); };
   const term = q.trim().toLowerCase();
   const matches = (a: PassportAccount) => !term || a.name.toLowerCase().includes(term) || a.records.some((r) => [r.passport, r.receipt, r.profession, r.notes, r.status, r.destination].some((v) => String(v ?? "").toLowerCase().includes(term)));
   const activeFilter = FILTERS.find((f) => f.id === filter) ?? FILTERS[0];
@@ -121,14 +126,17 @@ export function AgentStatement({ agent, agentNames, onBack, onUnmerge, onRename 
               const groupKey = shared[0];
               const firstInReceipt = groupKey && rows.findIndex((account) => sharedOf(account)[0] === groupKey) === i;
               const info = firstInReceipt ? receiptInfo(groupKey) : null;
+              const src = info ? acc.records.find((r) => r.sharedReceipt && (r.receipt || "—") === groupKey)?.sharedReceipt : undefined;
               return (
                 <Fragment key={acc.key}>
                 {info && groupKey && (
-                  <tr className="border-t-2 border-chart-3/60 bg-chart-3/15 text-xs">
+                  <tr onClick={() => src && openAllocation(src.sourceId)} title="مراجعة وتخصيص حصص هذا السند" className="cursor-pointer border-t-2 border-chart-3/60 bg-chart-3/15 text-xs hover:bg-chart-3/25">
                     <td colSpan={7} className="border-r-4 border-r-chart-3 px-3 py-1.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2"><div>
                       <span className="font-bold">سند مشترك <span className="num">{groupKey}</span></span>
                       <span className="mx-2 text-muted-foreground">|</span>الإجمالي: <span className="num font-semibold">{fmt(info.total)}</span>
-                      <span className="mx-2 text-muted-foreground">|</span>موزع على <span className="num">{info.count}</span> جوازات (حصة كل جواز: <span className="num">{fmt(Math.round((info.total / info.count) * 100) / 100)}</span>)
+                      <span className="mx-2 text-muted-foreground">|</span>موزع على <span className="num">{info.count}</span> جوازات {src?.needsReview ? <span className="font-semibold text-warning">(بانتظار التخصيص)</span> : src?.allocated ? <span className="font-semibold text-primary">(تخصيص يدوي)</span> : <>(حصة كل جواز: <span className="num">{fmt(Math.round((info.total / info.count) * 100) / 100)}</span>)</>}
+                      </div>{src && <Button type="button" size="sm" variant={src.needsReview ? "default" : "outline"} onClick={(e) => { e.stopPropagation(); openAllocation(src.sourceId); }} className="h-7 rounded-full px-3 text-[11px] print:hidden"><Split /> تخصيص الحصص</Button>}</div>
                     </td>
                   </tr>
                 )}
@@ -164,6 +172,7 @@ export function AgentStatement({ agent, agentNames, onBack, onUnmerge, onRename 
           </tfoot>
         </table>
       </div>
+      <AllocationDialog receipt={allocReceipt} onClose={() => setAllocId(null)} />
       <Sheet open={!!open} onOpenChange={(o) => !o && setOpen(null)}>
         <SheetContent side="left" className="w-full overflow-y-auto sm:max-w-md" dir="rtl">
           {open && (() => {
@@ -196,7 +205,8 @@ export function AgentStatement({ agent, agentNames, onBack, onUnmerge, onRename 
                           <div className="mt-1">إجمالي مبلغ السند: <span className="num">{fmt(r.sharedReceipt.originalPaid)}</span></div>
                           {r.sharedReceipt.needsReview
                             ? <div className="mt-2 flex items-start gap-2 rounded-lg bg-warning/10 p-2 text-warning"><AlertTriangle className="h-4 w-4 shrink-0" /><span>بحاجة لمراجعة التوزيع: الأرصدة السابقة غير متساوية أو غير مكتملة، أو إجمالي السند لا يطابقها. لم تُخصم هذه الدفعة من رصيد الجواز تجنباً لتوزيع غير مؤكد.</span></div>
-                            : <div className="mt-1">توزيع متساوٍ على <span className="num">{r.sharedReceipt.participants.length}</span> جوازات.</div>}
+                            : <div className="mt-1">{r.sharedReceipt.allocated ? "تخصيص يدوي محفوظ" : <>توزيع متساوٍ على <span className="num">{r.sharedReceipt.participants.length}</span> جوازات.</>}</div>}
+                          <Button type="button" size="sm" variant={r.sharedReceipt.needsReview ? "default" : "outline"} onClick={() => openAllocation(r.sharedReceipt!.sourceId)} className="mt-2 h-8 rounded-full text-xs"><Split /> مراجعة وتخصيص الحصص</Button>
                         </div>}
                         {(r.status || r.destination || r.notes) && <div className="mt-2 text-xs text-muted-foreground">{[r.status, r.destination, r.notes].filter(Boolean).join(" · ")}</div>}
                       </li>

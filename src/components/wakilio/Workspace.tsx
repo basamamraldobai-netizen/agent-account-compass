@@ -1,13 +1,15 @@
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "@tanstack/react-router";
-import { LayoutDashboard, Users, FileUp, Sparkles, PanelRightClose, Menu, X, Cloud, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, FileUp, Sparkles, Split, PanelRightClose, Menu, X, Cloud, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useWakilioSummary } from "./WakilioContext";
 import logo from "@/assets/wakilio-logo.asset.json";
 
 const navigation = [
   { to: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard },
   { to: "/agents", label: "حسابات الوكلاء", icon: Users },
+  { to: "/shared-receipts", label: "السندات المشتركة", icon: Split },
   { to: "/imports", label: "استيراد الملفات", icon: FileUp },
   { to: "/suggestions", label: "صندوق الاقتراحات", icon: Sparkles },
 ] as const;
@@ -16,6 +18,7 @@ export function Workspace({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const pending = useWakilioSummary().shared.filter((r) => r.needsReview).length;
   return (
     <div className={`workspace ${collapsed ? "sidebar-collapsed" : ""}`}>
       <header className="workspace-topbar">
@@ -36,7 +39,7 @@ export function Workspace({ children }: { children: ReactNode }) {
           <nav aria-label="القائمة الرئيسية" className="space-y-2">
             {navigation.map(({ to, label, icon: Icon }) => (
               <Button key={to} asChild variant="ghost" className={`sidebar-link ${location.pathname === to ? "is-active" : ""}`} title={collapsed ? label : undefined}>
-                <Link to={to} onClick={() => setOpen(false)} aria-current={location.pathname === to ? "page" : undefined}><span className="nav-icon"><Icon /></span><span className="nav-label">{label}</span></Link>
+                <Link to={to} onClick={() => setOpen(false)} aria-current={location.pathname === to ? "page" : undefined}><span className="nav-icon"><Icon /></span><span className="nav-label">{label}</span>{to === "/shared-receipts" && pending > 0 && <span className="nav-badge num" aria-label={`${pending} سند بحاجة لتخصيص`}>{pending > 999 ? "999+" : pending}</span>}</Link>
               </Button>
             ))}
           </nav>

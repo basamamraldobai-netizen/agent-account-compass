@@ -14,3 +14,7 @@
 - [x] Live cloud-sync progress window (percent, saved count, agents, time left, completion).
 # Passport statement
 - [x] Order displayed passport names alphabetically, including shared receipts and filtered/printed statements, without changing accounting data.
+# Shared receipts
+- [x] Sidebar section with pending counter and /shared-receipts page (stats, filters, search, table).
+- [x] Smart allocation popup (equal / by debt, live accounting check, cloud save, undo) from the page and agent statement.
+- [x] Tests for allocation accuracy and unchanged agent totals.

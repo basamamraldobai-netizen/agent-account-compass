@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo } from "react";
 import { toast } from "sonner";
-import { mergeAgents, resolveAgent, summarize } from "@/lib/wakilio/engine";
-import { useWakilio } from "@/components/wakilio/WakilioContext";
+import { mergeAgents, resolveAgent } from "@/lib/wakilio/engine";
+import { useWakilio, useWakilioSummary } from "@/components/wakilio/WakilioContext";
 import { MergeSuggestions } from "@/components/wakilio/MergeSuggestions";
 export const Route = createFileRoute("/_authenticated/suggestions")({
   head: () => ({ meta: [
@@ -13,7 +12,7 @@ export const Route = createFileRoute("/_authenticated/suggestions")({
 });
 function Suggestions() {
   const [state, setState] = useWakilio();
-  const agents = useMemo(() => summarize(state.records, state.aliases), [state.records, state.aliases]);
+  const { agents } = useWakilioSummary();
   return <><header className="page-heading"><div><h1>صندوق الاقتراحات</h1><div className="page-kicker">الوكلاء / مطابقة الأسماء</div></div></header><MergeSuggestions
     agents={agents}
     dismissed={state.dismissed}
