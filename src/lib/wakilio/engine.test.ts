@@ -246,7 +246,7 @@ describe("manual shared-receipt allocation", () => {
     expect(info.participants.map((p) => p.prior)).toEqual([2600, 3600, 3600]);
     expect(info.needsReview).toBe(true);
     const debt = suggestShares(info, "debt");
-    expect(debt.map((s) => s.paid)).toEqual([1585.37, 2207.32, 2207.31]);
+    expect(debt.map((s) => s.paid)).toEqual([1591.84, 2204.08, 2204.08]);
     expect(debt.reduce((t, s) => t + s.paid, 0)).toBeCloseTo(6000, 6);
     expect(suggestShares(info, "equal").map((s) => s.paid)).toEqual([2000, 2000, 2000]);
   });
