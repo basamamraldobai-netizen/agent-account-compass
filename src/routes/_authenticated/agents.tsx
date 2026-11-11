@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { Search, Users, FileUp, ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { renameAgent, resolveAgent, summarize } from "@/lib/wakilio/engine";
-import { useWakilio } from "@/components/wakilio/WakilioContext";
+import { useWakilio, useWakilioSummary } from "@/components/wakilio/WakilioContext";
 import { AgentStatement, Stat, fmt } from "@/components/wakilio/AgentStatement";
 import { Button } from "@/components/ui/button";
 
@@ -20,7 +20,7 @@ function Agents() {
   const [q, setQ] = useState("");
   const { agent } = Route.useSearch();
   const navigate = useNavigate();
-  const agents = useMemo(() => summarize(state.records, state.aliases), [state.records, state.aliases]);
+  const { agents } = useWakilioSummary();
   const current = agents.find((a) => a.name === agent);
   const shown = agents.filter((a) => a.name.includes(q.trim()));
   const totals = agents.reduce((t, a) => ({ p: t.p + a.passports, paid: t.paid + a.paid, rem: t.rem + a.remaining }), { p: 0, paid: 0, rem: 0 });
