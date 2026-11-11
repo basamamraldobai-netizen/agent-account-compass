@@ -51,7 +51,7 @@ export function AllocationDialog({ receipt, onClose, showAgentLink = false }: { 
     <Dialog open={!!receipt} onOpenChange={(o) => !o && onClose()}>
       <DialogContent dir="rtl" className="max-h-[92vh] max-w-2xl gap-4 overflow-y-auto rounded-2xl border-border bg-card p-5 text-card-foreground sm:p-6">
         {receipt && check && <>
-          <DialogHeader className="space-y-2 text-right sm:text-right">
+          <DialogHeader className="space-y-2 pr-8 text-right sm:text-right">
             <div className="flex items-center gap-3">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-chart-3/15 text-chart-3 ring-1 ring-chart-3/30"><Split className="h-5 w-5" /></span>
               <div className="min-w-0">
@@ -85,7 +85,7 @@ export function AllocationDialog({ receipt, onClose, showAgentLink = false }: { 
                 <div key={r.key} className="grid grid-cols-2 items-center gap-2 border-t border-border px-3 py-3 first:border-t-0 sm:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]">
                   <div className="col-span-2 font-semibold sm:col-span-1">{r.name}</div>
                   <div className="text-xs"><span className="text-muted-foreground sm:hidden">قبل: </span>{r.prior === null ? <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] text-accent">جواز جديد</span> : <span className="num">{fmt(r.prior)}</span>}</div>
-                  <div className="text-xs sm:order-none"><span className="text-muted-foreground sm:hidden">بعد: </span><span className="num font-semibold text-destructive sm:hidden">{fmt(after)}</span></div>
+                  <div className="text-xs sm:hidden"><span className="text-muted-foreground">بعد: </span><span className="num font-semibold text-destructive">{fmt(after)}</span></div>
                   <label className="block"><span className="mb-1 block text-[10px] text-muted-foreground sm:hidden">حصة المدفوع</span>
                     <input inputMode="decimal" dir="ltr" value={r.paid} onChange={(e) => edit(i, "paid", e.target.value)} aria-label={`حصة المدفوع لـ ${r.name}`} className="num w-full rounded-lg border border-input bg-background px-2 py-1.5 text-sm text-primary outline-none focus:border-primary focus:ring-2 focus:ring-primary/15" /></label>
                   <label className="block"><span className="mb-1 block text-[10px] text-muted-foreground sm:hidden">حصة المتبقي</span>
