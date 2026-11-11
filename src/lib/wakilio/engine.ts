@@ -512,6 +512,7 @@ export type SharedReceiptInfo = {
 /** Every shared receipt (one entry per original Excel row) with each passport's current share. */
 export function listSharedReceipts(agents: AgentSummary[]): SharedReceiptInfo[] {
   const out = new Map<string, SharedReceiptInfo>();
+  const orders = new Map<string, string[]>();
   for (const agent of agents) for (const account of agent.accounts) for (const r of account.records) {
     const sr = r.sharedReceipt;
     if (!sr) continue;
@@ -519,12 +520,13 @@ export function listSharedReceipts(agents: AgentSummary[]): SharedReceiptInfo[] 
     if (!info) {
       info = { sourceId: sr.sourceId, agent: agent.name, receipt: r.receipt, date: r.date, paid: sr.originalPaid, remaining: sr.originalRemaining, participants: [], needsReview: sr.needsReview, allocated: !!sr.allocated };
       out.set(sr.sourceId, info);
+      orders.set(sr.sourceId, sr.participants.map(passportKey));
     }
     info.participants.push({ key: passportKey(r.passport), name: r.passport, prior: sr.priorBalance ?? null, paid: sr.needsReview ? 0 : r.paid, remaining: sr.needsReview ? 0 : r.remaining });
   }
   for (const info of out.values()) {
-    const order = new Map(splitPassportNames(info.participants.map((p) => p.name).join("+")).map((n, i) => [passportKey(n), i]));
-    info.participants.sort((a, b) => (order.get(a.key) ?? 0) - (order.get(b.key) ?? 0));
+    const order = orders.get(info.sourceId) ?? [];
+    info.participants.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
   }
   return [...out.values()];
 }
