@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import type { TxRecord } from "@/lib/wakilio/engine";
+import type { Allocations, ReceiptShare, TxRecord } from "@/lib/wakilio/engine";
+import type { Json } from "@/integrations/supabase/types";
 
-export type State = { records: TxRecord[]; aliases: Record<string, string>; dismissed: string[] };
+export type State = { records: TxRecord[]; aliases: Record<string, string>; dismissed: string[]; allocations: Allocations };
 /** Live progress of a tracked save (e.g. an Excel import) to Lovable Cloud. */
 export type SyncProgress = { file: string; total: number; saved: number; agents: number; startedAt: number; finishedAt?: number; status: "saving" | "done" | "error" };
-const empty: State = { records: [], aliases: {}, dismissed: [] };
+const empty: State = { records: [], aliases: {}, dismissed: [], allocations: {} };
 
 async function fetchAll<T>(table: "transactions", select: string): Promise<T[]> {
   const out: T[] = [];
@@ -21,17 +22,20 @@ async function fetchAll<T>(table: "transactions", select: string): Promise<T[]> 
 type Row = { client_id: string; sheet: string; agent_raw: string; passport: string; receipt: string; paid: number; remaining: number; tx_date: string; status: string; destination: string; profession: string; notes: string; import_files: { name: string } | null };
 
 async function load(): Promise<State> {
-  const [rows, aliases, dismissed] = await Promise.all([
+  const [rows, aliases, dismissed, allocations] = await Promise.all([
     fetchAll<Row>("transactions", "client_id, sheet, agent_raw, passport, receipt, paid, remaining, tx_date, status, destination, profession, notes, import_files(name)"),
     supabase.from("agent_aliases").select("alias, target"),
     supabase.from("dismissed_suggestions").select("key"),
+    supabase.from("receipt_allocations").select("source_id, shares"),
   ]);
+  if (allocations.error) throw allocations.error;
   if (aliases.error) throw aliases.error;
   if (dismissed.error) throw dismissed.error;
   return {
     records: rows.map((r) => ({ id: r.client_id, file: r.import_files?.name ?? "", sheet: r.sheet, agentRaw: r.agent_raw, passport: r.passport, receipt: r.receipt, paid: Number(r.paid), remaining: Number(r.remaining), date: r.tx_date, status: r.status, destination: r.destination, profession: r.profession, notes: r.notes })),
     aliases: Object.fromEntries((aliases.data ?? []).map((a) => [a.alias, a.target])),
     dismissed: (dismissed.data ?? []).map((d) => d.key),
+    allocations: Object.fromEntries((allocations.data ?? []).filter((a) => Array.isArray(a.shares)).map((a) => [a.source_id, a.shares as unknown as ReceiptShare[]])),
   };
 }
 
@@ -83,6 +87,16 @@ async function persist(prev: State, next: State, onProgress?: (saved: number) =>
   const changedAliases = Object.entries(next.aliases).filter(([k, v]) => prev.aliases[k] !== v);
   if (changedAliases.length) {
     const { error } = await supabase.from("agent_aliases").upsert(changedAliases.map(([alias, target]) => ({ alias, target })), { onConflict: "user_id,alias" });
+    if (error) throw error;
+  }
+  const goneAlloc = Object.keys(prev.allocations).filter((k) => !(k in next.allocations));
+  if (goneAlloc.length) {
+    const { error } = await supabase.from("receipt_allocations").delete().in("source_id", goneAlloc);
+    if (error) throw error;
+  }
+  const changedAlloc = Object.entries(next.allocations).filter(([k, v]) => prev.allocations[k] !== v);
+  if (changedAlloc.length) {
+    const { error } = await supabase.from("receipt_allocations").upsert(changedAlloc.map(([source_id, shares]) => ({ source_id, shares: shares as unknown as Json, updated_at: new Date().toISOString() })), { onConflict: "user_id,source_id" });
     if (error) throw error;
   }
   const newDismissed = next.dismissed.filter((k) => !prev.dismissed.includes(k));
