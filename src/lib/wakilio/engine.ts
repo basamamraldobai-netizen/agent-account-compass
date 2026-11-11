@@ -127,8 +127,17 @@ export type TxRecord = {
     originalPaid: number;
     originalRemaining: number;
     needsReview: boolean;
+    /** This passport's balance before the receipt (null = no earlier record). */
+    priorBalance?: number | null;
+    /** True when the shares come from a saved manual allocation. */
+    allocated?: boolean;
   };
 };
+
+/** One passport's manual share of a shared receipt. */
+export type ReceiptShare = { key: string; name: string; paid: number; remaining: number };
+/** Saved manual allocations keyed by the original (source) transaction id. */
+export type Allocations = Record<string, ReceiptShare[]>;
 
 function formatDate(v: unknown): string {
   if (v instanceof Date) return v.toISOString().slice(0, 10);
@@ -310,7 +319,47 @@ function receiptDate(value: string): number | undefined {
 }
 
 /** Derived rows leave persisted source receipts untouched, so reloading/importing never splits twice. */
-export function processSharedReceipts(records: TxRecord[]): TxRecord[] {
+const cents = (n: number) => Math.round(n * 100);
+
+/** Splits an amount by weights to the cent; the parts always add up to the exact amount. */
+export function splitByWeights(amount: number, weights: number[]): number[] {
+  const n = weights.length;
+  if (!n) return [];
+  const clean = weights.map((w) => (isFinite(w) && w > 0 ? w : 0));
+  const sum = clean.reduce((t, w) => t + w, 0);
+  const use = sum > 0 ? clean : clean.map(() => 1);
+  const total = use.reduce((t, w) => t + w, 0);
+  const target = cents(amount);
+  const raw = use.map((w) => (target * w) / total);
+  const base = raw.map((x) => Math.trunc(x));
+  let left = target - base.reduce((t, x) => t + x, 0);
+  const order = raw.map((x, i) => ({ i, f: Math.abs(x - Math.trunc(x)) })).sort((a, b) => b.f - a.f || a.i - b.i);
+  for (let k = 0; left !== 0 && n > 0; k++) {
+    const i = order[k % n]!.i;
+    base[i] = base[i]! + Math.sign(left);
+    left -= Math.sign(left);
+  }
+  return base.map((c) => c / 100);
+}
+
+export type AllocationCheck = { valid: boolean; paidDiff: number; remainingDiff: number; issues: string[] };
+
+/** Accounting check: every participant exactly once, valid amounts, and shares adding up to the receipt. */
+export function checkAllocation(receipt: { paid: number; remaining: number; participants: string[] }, shares: ReceiptShare[]): AllocationCheck {
+  const issues: string[] = [];
+  const keys = receipt.participants.map(passportKey);
+  const shareKeys = shares.map((s) => s.key);
+  if (shares.length !== keys.length || new Set(shareKeys).size !== shareKeys.length || keys.some((k) => !shareKeys.includes(k))) issues.push("الحصص لا تطابق جوازات السند");
+  if (shares.some((s) => !isFinite(s.paid) || !isFinite(s.remaining))) issues.push("يوجد مبلغ غير صالح");
+  if (receipt.paid >= 0 && shares.some((s) => s.paid < 0)) issues.push("لا يمكن أن تكون حصة المدفوع بالسالب");
+  const paidDiff = (cents(receipt.paid) - shares.reduce((t, s) => t + cents(s.paid || 0), 0)) / 100;
+  const remainingDiff = (cents(receipt.remaining) - shares.reduce((t, s) => t + cents(s.remaining || 0), 0)) / 100;
+  if (paidDiff !== 0) issues.push("مجموع حصص المدفوع لا يساوي مدفوع السند");
+  if (remainingDiff !== 0) issues.push("مجموع حصص المتبقي لا يساوي متبقي السند");
+  return { valid: issues.length === 0, paidDiff, remainingDiff, issues };
+}
+
+export function processSharedReceipts(records: TxRecord[], allocations: Allocations = {}): TxRecord[] {
   const dated = records.map((record) => receiptDate(record.date));
   // Only reorder when every date can be interpreted; otherwise retain source order.
   const ordered = dated.every((date) => date !== undefined)
@@ -345,26 +394,34 @@ export function processSharedReceipts(records: TxRecord[]): TxRecord[] {
     const equalBalances = remaining.every((value) => Math.abs(value - (remaining[0] ?? 0)) < 0.005);
     const totalBalance = remaining.reduce((total, amount) => total + amount, 0);
     const consistentTotal = Math.abs(totalBalance - record.paid - record.remaining) < 0.015;
-    const needsReview = !first && !(existing && equalBalances && consistentTotal && previous.every((balance) => !balance?.uncertain));
-    participants.forEach((passport, index) => track({
-      ...record,
-      id: `${record.id}|person:${passportKey(passport)}`,
-      passport,
-      paid: needsReview ? 0 : divide(record.paid, participants.length, index),
-      remaining: needsReview ? remaining[index] ?? 0 : divide(record.remaining, participants.length, index),
-      sharedReceipt: {
-        sourceId: record.id, participants, originalPaid: record.paid,
-        originalRemaining: record.remaining, needsReview,
-      },
-    }));
+    const saved = allocations[record.id];
+    const manual = saved && checkAllocation({ paid: record.paid, remaining: record.remaining, participants }, saved).valid
+      ? new Map(saved.map((share) => [share.key, share])) : null;
+    const needsReview = !manual && !first && !(existing && equalBalances && consistentTotal && previous.every((balance) => !balance?.uncertain));
+    participants.forEach((passport, index) => {
+      const share = manual?.get(passportKey(passport));
+      track({
+        ...record,
+        id: `${record.id}|person:${passportKey(passport)}`,
+        passport,
+        paid: share ? share.paid : needsReview ? 0 : divide(record.paid, participants.length, index),
+        remaining: share ? share.remaining : needsReview ? remaining[index] ?? 0 : divide(record.remaining, participants.length, index),
+        sharedReceipt: {
+          sourceId: record.id, participants, originalPaid: record.paid,
+          originalRemaining: record.remaining, needsReview,
+          priorBalance: previous[index] ? remaining[index] ?? 0 : null,
+          allocated: !!share,
+        },
+      });
+    });
   }
   return result;
 }
 
 /** Groups an agent's rows by passport and computes the cumulative real balance. */
-export function groupPassports(records: TxRecord[]): PassportAccount[] {
+export function groupPassports(records: TxRecord[], allocations: Allocations = {}): PassportAccount[] {
   const map = new Map<string, TxRecord[]>();
-  for (const r of processSharedReceipts(records)) {
+  for (const r of processSharedReceipts(records, allocations)) {
     const k = passportKey(r.passport) || r.passport;
     const list = map.get(k);
     if (list) list.push(r);
@@ -412,7 +469,7 @@ export function resolveAgent(raw: string, aliases: Record<string, string>): stri
   return n;
 }
 
-export function summarize(records: TxRecord[], aliases: Record<string, string>): AgentSummary[] {
+export function summarize(records: TxRecord[], aliases: Record<string, string>, allocations: Allocations = {}): AgentSummary[] {
   const map = new Map<string, AgentSummary>();
   for (const r of records) {
     const name = resolveAgent(r.agentRaw, aliases);
@@ -425,7 +482,7 @@ export function summarize(records: TxRecord[], aliases: Record<string, string>):
     s.records.push(r);
   }
   for (const s of map.values()) {
-    s.accounts = groupPassports(s.records);
+    s.accounts = groupPassports(s.records, allocations);
     s.passports = s.accounts.length;
     const pending = new Map<string, number>();
     for (const account of s.accounts) for (const record of account.records) {
@@ -437,4 +494,45 @@ export function summarize(records: TxRecord[], aliases: Record<string, string>):
     s.total = s.paid + s.remaining;
   }
   return [...map.values()].sort((a, b) => b.remaining - a.remaining);
+}
+
+export type SharedParticipant = { key: string; name: string; prior: number | null; paid: number; remaining: number };
+export type SharedReceiptInfo = {
+  sourceId: string;
+  agent: string;
+  receipt: string;
+  date: string;
+  paid: number;
+  remaining: number;
+  participants: SharedParticipant[];
+  needsReview: boolean;
+  allocated: boolean;
+};
+
+/** Every shared receipt (one entry per original Excel row) with each passport's current share. */
+export function listSharedReceipts(agents: AgentSummary[]): SharedReceiptInfo[] {
+  const out = new Map<string, SharedReceiptInfo>();
+  for (const agent of agents) for (const account of agent.accounts) for (const r of account.records) {
+    const sr = r.sharedReceipt;
+    if (!sr) continue;
+    let info = out.get(sr.sourceId);
+    if (!info) {
+      info = { sourceId: sr.sourceId, agent: agent.name, receipt: r.receipt, date: r.date, paid: sr.originalPaid, remaining: sr.originalRemaining, participants: [], needsReview: sr.needsReview, allocated: !!sr.allocated };
+      out.set(sr.sourceId, info);
+    }
+    info.participants.push({ key: passportKey(r.passport), name: r.passport, prior: sr.priorBalance ?? null, paid: sr.needsReview ? 0 : r.paid, remaining: sr.needsReview ? 0 : r.remaining });
+  }
+  for (const info of out.values()) {
+    const order = new Map(splitPassportNames(info.participants.map((p) => p.name).join("+")).map((n, i) => [passportKey(n), i]));
+    info.participants.sort((a, b) => (order.get(a.key) ?? 0) - (order.get(b.key) ?? 0));
+  }
+  return [...out.values()];
+}
+
+/** Helper suggestions for the allocation window: equal split, or proportional to each passport's prior debt. */
+export function suggestShares(receipt: SharedReceiptInfo, mode: "equal" | "debt"): ReceiptShare[] {
+  const weights = receipt.participants.map((p) => (mode === "debt" ? Math.max(0, p.prior ?? 0) : 1));
+  const paid = splitByWeights(receipt.paid, weights);
+  const remaining = splitByWeights(receipt.remaining, weights);
+  return receipt.participants.map((p, i) => ({ key: p.key, name: p.name, paid: paid[i]!, remaining: remaining[i]! }));
 }
