@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollToTop } from "@/components/wakilio/ScrollToTop";
 
 /** Remembers where the agents list was when a statement was opened (kept across page changes, used once). */
-const listMemory: { agent?: string; y: number } = { y: 0 };
+const listMemory: { agent?: string | undefined; y: number } = { y: 0 };
 const remember = (name: string) => { listMemory.agent = name; listMemory.y = window.scrollY; };
 
 export const Route = createFileRoute("/_authenticated/agents")({
