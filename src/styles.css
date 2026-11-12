@@ -243,3 +243,14 @@
 .wakilio-table tbody tr.row-flash > td { animation: row-flash 2.4s ease-out; }
 .wakilio-table tbody tr.row-flash > td:first-child { box-shadow: inset -3px 0 var(--primary); }
 @keyframes row-flash { 0%, 35% { background: color-mix(in oklab, var(--primary) 18%, transparent); } 100% { background: transparent; } }
+
+/* Agents smart search */
+.smart-search { display: flex; align-items: center; gap: 8px; width: min(100%, 440px); padding: 10px 12px; border: 1px solid var(--input); border-radius: 11px; background: var(--card); transition: border-color .2s ease, box-shadow .2s ease; }
+.smart-search:focus-within { border-color: color-mix(in oklab, var(--primary) 55%, var(--input)); box-shadow: 0 0 0 3px color-mix(in oklab, var(--primary) 14%, transparent); }
+.smart-search input::-webkit-search-cancel-button { display: none; }
+.smart-search-clear { display: grid; place-items: center; width: 22px; height: 22px; flex-shrink: 0; border-radius: 9999px; color: var(--muted-foreground); background: var(--secondary); }
+.smart-search-clear:hover { color: var(--foreground); }
+.match-badge { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; margin-top: 6px; margin-inline-start: 0; padding: 3px 9px; border-radius: 9999px; font-size: 10px; line-height: 1.6; color: var(--primary); border: 1px solid color-mix(in oklab, var(--primary) 28%, transparent); background: color-mix(in oklab, var(--primary) 10%, transparent); overflow-wrap: anywhere; }
+.match-badge svg { width: 11px; height: 11px; flex-shrink: 0; }
+.wakilio-table td > .match-badge { display: flex; width: fit-content; }
+@media (max-width: 767px) { .smart-search { width: 100%; } }

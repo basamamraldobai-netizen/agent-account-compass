@@ -21,3 +21,4 @@
 # Navigation
 - [x] Agents list keeps its place when returning from a statement (also after visiting another page), with a brief highlight on that agent.
 - [x] Floating glass back-to-top button on the agents list and agent statement.
+- [x] Smart search on the agents list (agent name, merged names, passport names, receipt number, date, notes) with a match-reason badge.
