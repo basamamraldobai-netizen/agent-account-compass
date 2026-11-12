@@ -18,3 +18,6 @@
 - [x] Sidebar section with pending counter and /shared-receipts page (stats, filters, search, table).
 - [x] Smart allocation popup (equal / by debt, live accounting check, cloud save, undo) from the page and agent statement.
 - [x] Tests for allocation accuracy and unchanged agent totals.
+# Navigation
+- [x] Agents list keeps its place when returning from a statement (also after visiting another page), with a brief highlight on that agent.
+- [x] Floating glass back-to-top button on the agents list and agent statement.
