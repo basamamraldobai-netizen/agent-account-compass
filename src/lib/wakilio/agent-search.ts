@@ -66,7 +66,7 @@ function matchOne(ix: Indexed, key: string, dq: string): AgentMatch | null {
 
 /**
  * Smart search for the agents list: agent name, merged names, passport names, receipt number,
- * date and notes. Agents matched by their own name come first; original order is kept otherwise.
+ * date and notes. Agents matched by their own name come first, then merged names; original order is kept otherwise.
  */
 export function searchAgents(index: Indexed[], query: string): AgentHit[] {
   const key = textKey(query);
@@ -77,7 +77,7 @@ export function searchAgents(index: Indexed[], query: string): AgentHit[] {
     const match = matchOne(ix, key, dq);
     if (match) hits.push({ agent: ix.agent, match });
   }
-  const direct = (h: AgentHit) => (h.match.kind === "name" || h.match.kind === "alias" ? 0 : 1);
+  const direct = (h: AgentHit) => (h.match.kind === "name" ? 0 : h.match.kind === "alias" ? 1 : 2);
   return hits.map((h, i) => [h, i] as const).sort((a, b) => direct(a[0]) - direct(b[0]) || a[1] - b[1]).map(([h]) => h);
 }
 
@@ -91,7 +91,7 @@ export function matchLabel(m: AgentMatch): string | null {
     case "alias": return `اسم مدمج: ${short(m.value)}`;
     case "passport": return `مطابقة في جواز: ${short(m.value)}${more}`;
     case "receipt": return `سند رقم: ${m.value}${more}`;
-    case "date": return `التاريخ: ${m.value} (${m.count} حركة)`;
+    case "date": return `التاريخ: ${m.value}${m.count > 1 ? ` (${m.count} حركات)` : ""}`;
     case "notes": return `في البيان: ${short(m.value)}${more}`;
   }
 }
