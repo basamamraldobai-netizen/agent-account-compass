@@ -18,3 +18,4 @@
 - Tracked saves (Excel imports) pass { track: fileName } to the store's setState; the store reports per-batch progress as `sync`, so the progress window reflects real saved rows rather than a timer.
 - Passport statement ordering uses a tested display-only Arabic collation helper; keep accounting and transaction chronology unchanged when ordering visible rows.
 - Agent summaries and shared receipts are computed once in WakilioProvider (useWakilioSummary) so pages and the sidebar counter stay consistent and avoid repeated recalculation.
+- Agents-list smart search is a pure, tested module (src/lib/wakilio/agent-search.ts) that pre-normalizes fields once per summary change, so large files stay fast and match reasons stay consistent; it is scoped to the agents list only.
