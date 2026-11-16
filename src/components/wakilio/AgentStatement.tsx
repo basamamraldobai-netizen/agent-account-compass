@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { AlertTriangle, ArrowRight, ChevronLeft, Printer, Search, Split, Wallet, type LucideIcon } from "lucide-react";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { listSharedReceipts, type AgentSummary, type PassportAccount } from "@/lib/wakilio/engine";
+import { isServiceCost, listSharedReceipts, type AgentSummary, type PassportAccount } from "@/lib/wakilio/engine";
 import { AllocationDialog } from "./AllocationDialog";
 import { RenameAgent } from "./RenameAgent";
 import { sortPassportNames } from "./passport-order";
@@ -193,12 +193,12 @@ export function AgentStatement({ agent, agentNames, onBack, onUnmerge, onRename 
                     paidSoFar += r.paid;
                     return (
                       <li key={r.id} className="rounded-[12px] border border-border p-3 text-sm">
-                        <div className="flex items-center justify-between"><span className="font-bold">دفعة {j + 1}</span><span className="num text-xs text-muted-foreground">{r.date || "—"}</span></div>
+                        <div className="flex items-center justify-between"><span className="font-bold">{isServiceCost(r) ? "قيد تكلفة الخدمة" : `دفعة ${j + 1}`}</span><span className="num text-xs text-muted-foreground">{r.date || "—"}</span></div>
                         <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-muted-foreground">
                           <span>رقم السند: <span className="num text-foreground">{r.receipt || "—"}</span></span>
                           <span>المبلغ: <span className="num font-semibold text-primary">{r.sharedReceipt?.needsReview ? "بانتظار التوزيع" : fmt(r.paid)}</span></span>
                           <span>الرصيد التراكمي: <span className="num font-semibold text-destructive">{fmt(open.due - paidSoFar)}</span></span>
-                          <span>{r.sharedReceipt ? "المسجل للسند كاملاً" : "المسجل بالملف"}: <span className="num">{fmt(r.sharedReceipt?.originalRemaining ?? r.remaining)}</span></span>
+                          <span>{isServiceCost(r) ? "تكلفة الخدمة بالملف" : r.sharedReceipt ? "المسجل للسند كاملاً" : "المسجل بالملف"}: <span className="num">{fmt(r.sharedReceipt?.originalRemaining ?? r.remaining)}</span></span>
                         </div>
                         {r.sharedReceipt && <div className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">
                           <div className="font-semibold text-accent">سند مشترك رقم <span className="num">{r.receipt || "غير مذكور"}</span> مع {r.sharedReceipt.participants.filter((name) => name !== r.passport).join(" و ")}</div>
@@ -206,7 +206,7 @@ export function AgentStatement({ agent, agentNames, onBack, onUnmerge, onRename 
                           {r.sharedReceipt.needsReview
                             ? <div className="mt-2 flex items-start gap-2 rounded-lg bg-warning/10 p-2 text-warning"><AlertTriangle className="h-4 w-4 shrink-0" /><span>بحاجة لمراجعة التوزيع: الأرصدة السابقة غير متساوية أو غير مكتملة، أو إجمالي السند لا يطابقها. لم تُخصم هذه الدفعة من رصيد الجواز تجنباً لتوزيع غير مؤكد.</span></div>
                             : <div className="mt-1">{r.sharedReceipt.allocated ? "تخصيص يدوي محفوظ" : <>توزيع متساوٍ على <span className="num">{r.sharedReceipt.participants.length}</span> جوازات.</>}</div>}
-                          <Button type="button" size="sm" variant={r.sharedReceipt.needsReview ? "default" : "outline"} onClick={() => openAllocation(r.sharedReceipt!.sourceId)} className="mt-2 h-8 rounded-full text-xs"><Split /> مراجعة وتخصيص الحصص</Button>
+                          <Button type="button" size="sm" variant={r.sharedReceipt.needsReview ? "default" : "outline"} onClick={() => { if (r.sharedReceipt) openAllocation(r.sharedReceipt.sourceId); }} className="mt-2 h-8 rounded-full text-xs"><Split /> مراجعة وتخصيص الحصص</Button>
                         </div>}
                         {(r.status || r.destination || r.notes) && <div className="mt-2 text-xs text-muted-foreground">{[r.status, r.destination, r.notes].filter(Boolean).join(" · ")}</div>}
                       </li>

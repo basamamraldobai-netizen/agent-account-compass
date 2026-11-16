@@ -292,7 +292,7 @@ export type PassportAccount = {
   name: string;
   variants: string[];
   records: TxRecord[];
-  due: number; // original amount owed (first row: paid + remaining)
+  due: number; // service cost inferred from cost entries or cumulative payments + stated balance
   paid: number; // cumulative payments across all rows
   remaining: number; // actual balance = due - paid
   recordedRemaining: number; // remaining written on the latest row
@@ -320,6 +320,27 @@ function receiptDate(value: string): number | undefined {
 
 /** Derived rows leave persisted source receipts untouched, so reloading/importing never splits twice. */
 const cents = (n: number) => Math.round(n * 100);
+
+/** A zero-payment positive entry records cost, not an unpaid balance after a payment. */
+export function isServiceCost(record: TxRecord): boolean {
+  return record.paid === 0 && record.remaining > 0 && !record.sharedReceipt?.needsReview
+    && (!record.sharedReceipt || record.sharedReceipt.originalPaid === 0);
+}
+
+/** Cost entries take precedence; otherwise use the first stated running balance.
+ * Payment-only rows with zero balances describe a cost spread across those payments.
+ * Do not take a maximum or add repeated balance snapshots: that hides real audit gaps.
+ */
+function passportDue(records: readonly TxRecord[]): number {
+  const cost = records.find(isServiceCost);
+  if (cost) return cost.remaining;
+  let paid = 0;
+  for (const record of records) {
+    paid += cents(record.paid);
+    if (!record.sharedReceipt?.needsReview && record.remaining !== 0) return (paid + cents(record.remaining)) / 100;
+  }
+  return paid / 100;
+}
 
 /** Splits an amount by weights to the cent; the parts always add up to the exact amount. */
 export function splitByWeights(amount: number, weights: number[]): number[] {
@@ -367,13 +388,46 @@ export function processSharedReceipts(records: TxRecord[], allocations: Allocati
       .sort((a, b) => a.date - b.date || a.index - b.index).map(({ record }) => record)
     : records;
   const balances = new Map<string, { due: number; paid: number; uncertain: boolean }>();
+  const histories = new Map<string, TxRecord[]>();
+  // An independent service entry can follow its payments in the source file.
+  const costs = new Map<string, number>();
+  for (const record of ordered) {
+    const participants = splitPassportNames(record.passport);
+    if (participants.length === 1 && isServiceCost(record)) {
+      const key = passportKey(participants[0] ?? record.passport);
+      if (!costs.has(key)) costs.set(key, record.remaining);
+    }
+  }
+  // A shared cost following payment-only rows can establish each original
+  // equal share before those payments are processed. Never infer this for
+  // mixed individual histories or saved allocations with different shares.
+  for (const record of ordered) {
+    const participants = splitPassportNames(record.passport);
+    if (participants.length < 2 || !isServiceCost(record) || allocations[record.id]) continue;
+    const keys = participants.map(passportKey);
+    const sameGroup = (row: TxRecord) => {
+      const rowKeys = splitPassportNames(row.passport).map(passportKey);
+      return rowKeys.length === keys.length && keys.every((key) => rowKeys.includes(key));
+    };
+    const relevant = ordered.filter((row) => splitPassportNames(row.passport).some((name) => keys.includes(passportKey(name))));
+    if (!relevant.every((row) => sameGroup(row) && !allocations[row.id] && (isServiceCost(row) || row.remaining === 0))) continue;
+    splitByWeights(record.remaining, participants.map(() => 1)).forEach((amount, index) => {
+      const key = keys[index];
+      if (key && !costs.has(key)) costs.set(key, amount);
+    });
+  }
   const result: TxRecord[] = [];
   const track = (record: TxRecord) => {
     const key = passportKey(record.passport);
     const previous = balances.get(key);
-    balances.set(key, previous
-      ? { due: previous.due || record.paid + record.remaining, paid: previous.paid + record.paid, uncertain: previous.uncertain || !!record.sharedReceipt?.needsReview }
-      : { due: record.paid + record.remaining, paid: record.paid, uncertain: !!record.sharedReceipt?.needsReview });
+    const history = histories.get(key) ?? [];
+    history.push(record);
+    histories.set(key, history);
+    balances.set(key, {
+      due: costs.get(key) ?? passportDue(history),
+      paid: ((previous ? cents(previous.paid) : 0) + cents(record.paid)) / 100,
+      uncertain: !!previous?.uncertain || !!record.sharedReceipt?.needsReview,
+    });
     result.push(record);
   };
   // Preserve totals to the cent, including amounts not exactly divisible by the participant count.
@@ -397,7 +451,10 @@ export function processSharedReceipts(records: TxRecord[], allocations: Allocati
     const saved = allocations[record.id];
     const manual = saved && checkAllocation({ paid: record.paid, remaining: record.remaining, participants }, saved).valid
       ? new Map(saved.map((share) => [share.key, share])) : null;
-    const needsReview = !manual && !first && !(existing && equalBalances && consistentTotal && previous.every((balance) => !balance?.uncertain));
+    // A zero-payment cost entry states the full service cost, not a payment
+    // that must match the previous outstanding balance. Keep unequal/uncertain cases guarded.
+    const costEntry = isServiceCost(record);
+    const needsReview = !manual && !first && !(existing && equalBalances && (consistentTotal || costEntry) && previous.every((balance) => !balance?.uncertain));
     participants.forEach((passport, index) => {
       const share = manual?.get(passportKey(passport));
       track({
@@ -428,21 +485,22 @@ export function groupPassports(records: TxRecord[], allocations: Allocations = {
     else map.set(k, [r]);
   }
   return [...map.entries()].map(([key, recs]) => {
-    const first = recs.find((r) => r.paid + r.remaining > 0) ?? recs[0]!;
-    const due = first.paid + first.remaining;
-    const paid = recs.reduce((t, r) => t + r.paid, 0);
-    const remaining = recs.length === 1 ? recs[0]!.remaining : due - paid;
-    const recordedRemaining = recs[recs.length - 1]!.remaining;
+    const due = passportDue(recs);
+    const paid = recs.reduce((t, r) => t + cents(r.paid), 0) / 100;
+    const remaining = (cents(due) - cents(paid)) / 100;
+    // A trailing service cost is not a post-payment balance snapshot.
+    const latestBalance = recs.filter((r) => !isServiceCost(r)).at(-1);
+    const recordedRemaining = latestBalance?.remaining ?? remaining;
     return {
       key,
       name: recs[0]!.passport,
       variants: [...new Set(recs.map((r) => r.passport))],
       records: recs,
-      due: recs.length === 1 ? recs[0]!.paid + recs[0]!.remaining : due,
+      due,
       paid,
       remaining,
       recordedRemaining,
-      diff: recordedRemaining - remaining,
+      diff: (cents(recordedRemaining) - cents(remaining)) / 100,
     };
   });
 }

@@ -22,3 +22,7 @@
 - [x] Agents list keeps its place when returning from a statement (also after visiting another page), with a brief highlight on that agent.
 - [x] Floating glass back-to-top button on the agents list and agent statement.
 - [x] Smart search on the agents list (agent name, merged names, passport names, receipt number, date, notes) with a match-reason badge.
+# Service-cost accounting
+- [x] Reconcile independent service costs and cumulative payments in passport/shared-receipt accounting.
+- [x] Verify real statement details and regression tests without changing imported rows.
+- [x] Sweep dashboard, agents/search/print, merge totals, shared receipts/allocation, import/save/delete and Cloud functions for the same cost rule; cover trailing shared costs and zero-payment manual shares with regression tests.

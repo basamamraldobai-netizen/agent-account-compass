@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseAmount, detectHeaderRow, detectTitleAgent, buildRecords, guessRole, suggestMerges, summarize, splitPassportNames, processSharedReceipts, type TxRecord } from "./engine";
+import { parseAmount, detectHeaderRow, detectTitleAgent, buildRecords, guessRole, suggestMerges, summarize, splitPassportNames, processSharedReceipts, groupPassports, type TxRecord } from "./engine";
 
 describe("engine", () => {
   it("treats لاشي as zero", () => {
@@ -62,6 +62,81 @@ describe("engine", () => {
     const recs = buildRecords({ grid, headerRow: h, roles, fixedAgent: "", file: "f", sheet: "s" });
     expect(recs[0]!.profession).toBe("سائق");
     expect(recs[0]!.destination).toBe("عدن");
+  });
+});
+
+describe("service cost reconciliation", () => {
+  const tx = (id: string, paid: number, remaining: number, passport = "أكرم الصعفاني"): TxRecord => ({
+    id, paid, remaining, passport, file: "f", sheet: "s", agentRaw: "يوسف الشامي",
+    receipt: id, date: "", status: "", destination: "", profession: "", notes: "",
+  });
+
+  it("uses the independent 3,350 service cost after the 1,000 and 2,350 payments", () => {
+    const records = [tx("1", 1000, 0), tx("2", 2350, 0), { ...tx("3", 0, 3350), notes: "مع الإقامة" }];
+    const original = structuredClone(records);
+    const account = groupPassports(records)[0];
+    expect(account).toMatchObject({ due: 3350, paid: 3350, remaining: 0, recordedRemaining: 0, diff: 0 });
+    expect(account?.records.map((_, i) => account.due - account.records.slice(0, i + 1).reduce((sum, r) => sum + r.paid, 0))).toEqual([2350, 0, 0]);
+    expect(summarize(records, {})[0]).toMatchObject({ total: 3350, paid: 3350, remaining: 0 });
+    expect(records).toEqual(original);
+  });
+
+  it("recognizes a cost spread across payment-only rows without a separate service entry", () => {
+    expect(groupPassports([tx("1", 1000, 0), tx("2", 2350, 0)])[0]).toMatchObject({ due: 3350, paid: 3350, remaining: 0, diff: 0 });
+  });
+
+  it("adds earlier payments when the first nonzero balance is on a later payment", () => {
+    expect(groupPassports([tx("1", 1000, 0), tx("2", 2000, 350), tx("3", 350, 0)])[0]).toMatchObject({ due: 3350, paid: 3350, remaining: 0, diff: 0 });
+  });
+
+  it("retains a real 350 balance and a real audit gap on incomplete payment", () => {
+    expect(groupPassports([tx("1", 1000, 0), tx("2", 2000, 0), tx("3", 0, 3350)])[0]).toMatchObject({ due: 3350, paid: 3000, remaining: 350, diff: -350 });
+  });
+
+  it("retains true excess payments instead of increasing the known cost", () => {
+    expect(groupPassports([tx("1", 0, 3350), tx("2", 3500, -150)])[0]).toMatchObject({ due: 3350, paid: 3500, remaining: -150, diff: 0 });
+  });
+
+  it("does not add repeated service-cost snapshots twice", () => {
+    expect(groupPassports([tx("1", 0, 3350), tx("2", 1000, 2350), tx("3", 0, 3350), tx("4", 2350, 0)])[0]).toMatchObject({ due: 3350, paid: 3350, remaining: 0, diff: 0 });
+  });
+
+  it("uses corrected prior balances for a subsequent equal shared payment", () => {
+    const records = [tx("1", 1000, 0, "أكرم"), tx("2", 1000, 0, "علي"),
+      tx("3", 0, 3350, "أكرم"), tx("4", 0, 3350, "علي"), tx("5", 4700, 0, "أكرم + علي")];
+    const summary = summarize(records, {})[0];
+    expect(summary).toMatchObject({ paid: 6700, total: 6700, remaining: 0, pendingPaid: 0 });
+    expect(summary?.accounts.map((a) => a.records.at(-1)?.sharedReceipt?.priorBalance)).toEqual([2350, 2350]);
+    expect(summary?.accounts.map((a) => a.remaining)).toEqual([0, 0]);
+  });
+
+  it("recognizes an independent cost after a shared payment without changing allocations", () => {
+    const records = [tx("1", 1000, 0, "أكرم"), tx("2", 1000, 0, "علي"),
+      tx("3", 4700, 0, "أكرم + علي"), tx("4", 0, 3350, "أكرم"), tx("5", 0, 3350, "علي")];
+    expect(summarize(records, {})[0]).toMatchObject({ paid: 6700, total: 6700, remaining: 0, pendingPaid: 0 });
+  });
+
+  it("recognizes a shared 6,700 service cost following two shared payment-only rows", () => {
+    const records = [tx("1", 2000, 0, "أكرم + علي"), tx("2", 4700, 0, "أكرم + علي"), tx("3", 0, 6700, "أكرم + علي")];
+    const summary = summarize(records, {})[0];
+    expect(summary).toMatchObject({ paid: 6700, total: 6700, remaining: 0, pendingPaid: 0 });
+    expect(summary?.accounts.map((a) => ({ due: a.due, remaining: a.remaining, diff: a.diff }))).toEqual([
+      { due: 3350, remaining: 0, diff: 0 }, { due: 3350, remaining: 0, diff: 0 },
+    ]);
+    expect(summary?.accounts.every((a) => !a.records.at(-1)?.sharedReceipt?.needsReview)).toBe(true);
+  });
+
+  it("does not mistake a zero paid share of a manually allocated payment for a new cost", () => {
+    const records = [tx("1", 1000, 2350, "أكرم"), tx("2", 1000, 2350, "علي"), tx("3", 2350, 2350, "أكرم + علي")];
+    const allocations = { "3": [
+      { key: passportKey("أكرم"), name: "أكرم", paid: 0, remaining: 2350 },
+      { key: passportKey("علي"), name: "علي", paid: 2350, remaining: 0 },
+    ] };
+    const summary = summarize(records, {}, allocations)[0];
+    expect(summary?.accounts.map((a) => ({ due: a.due, remaining: a.remaining }))).toEqual([
+      { due: 3350, remaining: 2350 }, { due: 3350, remaining: 0 },
+    ]);
+    expect(summary).toMatchObject({ total: 6700, paid: 4350, remaining: 2350 });
   });
 });
 
