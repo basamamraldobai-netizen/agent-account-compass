@@ -19,3 +19,4 @@
 - Passport statement ordering uses a tested display-only Arabic collation helper; keep accounting and transaction chronology unchanged when ordering visible rows.
 - Agent summaries and shared receipts are computed once in WakilioProvider (useWakilioSummary) so pages and the sidebar counter stay consistent and avoid repeated recalculation.
 - Agents-list smart search is a pure, tested module (src/lib/wakilio/agent-search.ts) that pre-normalizes fields once per summary change, so large files stay fast and match reasons stay consistent; it is scoped to the agents list only.
+- Reconcile passport service costs through the same pure cost inference in final accounts and shared-receipt balance tracking; audit payment balances separately from cost entries so trailing cost rows do not create false discrepancies.
