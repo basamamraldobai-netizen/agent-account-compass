@@ -323,7 +323,8 @@ const cents = (n: number) => Math.round(n * 100);
 
 /** A zero-payment positive entry records cost, not an unpaid balance after a payment. */
 export function isServiceCost(record: TxRecord): boolean {
-  return record.paid === 0 && record.remaining > 0 && !record.sharedReceipt?.needsReview;
+  return record.paid === 0 && record.remaining > 0 && !record.sharedReceipt?.needsReview
+    && (!record.sharedReceipt || record.sharedReceipt.originalPaid === 0);
 }
 
 /** Cost entries take precedence; otherwise use the first stated running balance.
@@ -432,7 +433,10 @@ export function processSharedReceipts(records: TxRecord[], allocations: Allocati
     const saved = allocations[record.id];
     const manual = saved && checkAllocation({ paid: record.paid, remaining: record.remaining, participants }, saved).valid
       ? new Map(saved.map((share) => [share.key, share])) : null;
-    const needsReview = !manual && !first && !(existing && equalBalances && consistentTotal && previous.every((balance) => !balance?.uncertain));
+    // A zero-payment cost entry states the full service cost, not a payment
+    // that must match the previous outstanding balance. Keep unequal/uncertain cases guarded.
+    const costEntry = isServiceCost(record);
+    const needsReview = !manual && !first && !(existing && equalBalances && (consistentTotal || costEntry) && previous.every((balance) => !balance?.uncertain));
     participants.forEach((passport, index) => {
       const share = manual?.get(passportKey(passport));
       track({

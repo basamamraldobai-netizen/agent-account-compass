@@ -115,6 +115,29 @@ describe("service cost reconciliation", () => {
       tx("3", 4700, 0, "أكرم + علي"), tx("4", 0, 3350, "أكرم"), tx("5", 0, 3350, "علي")];
     expect(summarize(records, {})[0]).toMatchObject({ paid: 6700, total: 6700, remaining: 0, pendingPaid: 0 });
   });
+
+  it("recognizes a shared 6,700 service cost following two shared payment-only rows", () => {
+    const records = [tx("1", 2000, 0, "أكرم + علي"), tx("2", 4700, 0, "أكرم + علي"), tx("3", 0, 6700, "أكرم + علي")];
+    const summary = summarize(records, {})[0];
+    expect(summary).toMatchObject({ paid: 6700, total: 6700, remaining: 0, pendingPaid: 0 });
+    expect(summary?.accounts.map((a) => ({ due: a.due, remaining: a.remaining, diff: a.diff }))).toEqual([
+      { due: 3350, remaining: 0, diff: 0 }, { due: 3350, remaining: 0, diff: 0 },
+    ]);
+    expect(summary?.accounts.every((a) => !a.records.at(-1)?.sharedReceipt?.needsReview)).toBe(true);
+  });
+
+  it("does not mistake a zero paid share of a manually allocated payment for a new cost", () => {
+    const records = [tx("1", 1000, 2350, "أكرم"), tx("2", 1000, 2350, "علي"), tx("3", 2350, 2350, "أكرم + علي")];
+    const allocations = { "3": [
+      { key: passportKey("أكرم"), name: "أكرم", paid: 0, remaining: 2350 },
+      { key: passportKey("علي"), name: "علي", paid: 2350, remaining: 0 },
+    ] };
+    const summary = summarize(records, {}, allocations)[0];
+    expect(summary?.accounts.map((a) => ({ due: a.due, remaining: a.remaining }))).toEqual([
+      { due: 3350, remaining: 2350 }, { due: 3350, remaining: 0 },
+    ]);
+    expect(summary).toMatchObject({ total: 6700, paid: 4350, remaining: 2350 });
+  });
 });
 
 describe("shared receipts", () => {

@@ -25,3 +25,4 @@
 # Service-cost accounting
 - [x] Reconcile independent service costs and cumulative payments in passport/shared-receipt accounting.
 - [x] Verify real statement details and regression tests without changing imported rows.
+- [x] Sweep dashboard, agents/search/print, merge totals, shared receipts/allocation, import/save/delete and Cloud functions for the same cost rule; cover trailing shared costs and zero-payment manual shares with regression tests.
