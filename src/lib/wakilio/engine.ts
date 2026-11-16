@@ -398,6 +398,24 @@ export function processSharedReceipts(records: TxRecord[], allocations: Allocati
       if (!costs.has(key)) costs.set(key, record.remaining);
     }
   }
+  // A shared cost following payment-only rows can establish each original
+  // equal share before those payments are processed. Never infer this for
+  // mixed individual histories or saved allocations with different shares.
+  for (const record of ordered) {
+    const participants = splitPassportNames(record.passport);
+    if (participants.length < 2 || !isServiceCost(record) || allocations[record.id]) continue;
+    const keys = participants.map(passportKey);
+    const sameGroup = (row: TxRecord) => {
+      const rowKeys = splitPassportNames(row.passport).map(passportKey);
+      return rowKeys.length === keys.length && keys.every((key) => rowKeys.includes(key));
+    };
+    const relevant = ordered.filter((row) => splitPassportNames(row.passport).some((name) => keys.includes(passportKey(name))));
+    if (!relevant.every((row) => sameGroup(row) && !allocations[row.id] && (isServiceCost(row) || row.remaining === 0))) continue;
+    splitByWeights(record.remaining, participants.map(() => 1)).forEach((amount, index) => {
+      const key = keys[index];
+      if (key && !costs.has(key)) costs.set(key, amount);
+    });
+  }
   const result: TxRecord[] = [];
   const track = (record: TxRecord) => {
     const key = passportKey(record.passport);
