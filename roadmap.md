@@ -23,5 +23,5 @@
 - [x] Floating glass back-to-top button on the agents list and agent statement.
 - [x] Smart search on the agents list (agent name, merged names, passport names, receipt number, date, notes) with a match-reason badge.
 # Service-cost accounting
-- [ ] Reconcile independent service costs and cumulative payments in passport/shared-receipt accounting.
-- [ ] Verify real statement details and regression tests without changing imported rows.
+- [x] Reconcile independent service costs and cumulative payments in passport/shared-receipt accounting.
+- [x] Verify real statement details and regression tests without changing imported rows.
